@@ -1,57 +1,37 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const GEMINI_API_KEY = Deno.env.get('Gemini_API_Key');
+const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY');
+const GROQ_API_KEY = Deno.env.get('GROQ_API_KEY');
+const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const supabaseClient = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+    { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+  );
+
   try {
-    const { message, conversationId } = await req.json();
+    const { message, conversationId, provider = 'gemini' } = await req.json();
     
-    if (!message) {
-      return new Response(
-        JSON.stringify({ error: 'Message is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    console.log('Processing chat message:', { conversationId, provider });
 
-    console.log('Processing chat message:', { message, conversationId });
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if (!user) throw new Error('Unauthorized');
 
-    // Get auth token
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      return new Response(
-        JSON.stringify({ error: 'Authorization required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Create Supabase client
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    });
-
-    // Verify user is authenticated
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Save user message to database
-    const { error: insertError } = await supabase
+    // Save user message
+    const { error: userMsgError } = await supabaseClient
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -59,62 +39,33 @@ serve(async (req) => {
         content: message,
       });
 
-    if (insertError) {
-      console.error('Error saving user message:', insertError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save message' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    if (userMsgError) throw userMsgError;
 
-    // Get conversation history for context
-    const { data: messages, error: messagesError } = await supabase
+    // Get conversation history
+    const { data: history } = await supabaseClient
       .from('messages')
       .select('role, content')
       .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true })
+      .limit(10);
 
-    if (messagesError) {
-      console.error('Error fetching conversation history:', messagesError);
+    let aiResponse = '';
+
+    // Call appropriate AI provider
+    if (provider === 'gemini' && GEMINI_API_KEY) {
+      aiResponse = await callGemini(history || [], message);
+    } else if (provider === 'anthropic' && ANTHROPIC_API_KEY) {
+      aiResponse = await callAnthropic(history || [], message);
+    } else if (provider === 'groq' && GROQ_API_KEY) {
+      aiResponse = await callGroq(history || [], message);
+    } else if (provider === 'openai' && OPENAI_API_KEY) {
+      aiResponse = await callOpenAI(history || [], message);
+    } else {
+      aiResponse = await callGemini(history || [], message);
     }
 
-    // Send to n8n webhook
-    const n8nWebhookUrl = 'https://omi7972.app.n8n.cloud/webhook/e5616171-e3b5-4c39-81d4-67409f9fa60a/chat';
-    
-    const n8nPayload = {
-      message,
-      conversationId,
-      userId: user.id,
-      timestamp: new Date().toISOString(),
-      conversationHistory: messages || [],
-    };
-
-    console.log('Sending to n8n webhook:', n8nWebhookUrl);
-    
-    const n8nResponse = await fetch(n8nWebhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(n8nPayload),
-    });
-
-    if (!n8nResponse.ok) {
-      console.error('n8n webhook error:', n8nResponse.status, await n8nResponse.text());
-      return new Response(
-        JSON.stringify({ error: 'Failed to process message with n8n' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const n8nData = await n8nResponse.json();
-    console.log('n8n response received:', n8nData);
-
-    // Extract AI response from n8n
-    const aiResponse = n8nData.response || n8nData.output || "I'm here to help! How can I assist you today?";
-
-    // Save assistant response to database
-    const { error: assistantInsertError } = await supabase
+    // Save AI response
+    const { error: aiMsgError } = await supabaseClient
       .from('messages')
       .insert({
         conversation_id: conversationId,
@@ -122,30 +73,126 @@ serve(async (req) => {
         content: aiResponse,
       });
 
-    if (assistantInsertError) {
-      console.error('Error saving assistant message:', assistantInsertError);
+    if (aiMsgError) throw aiMsgError;
+
+    // Send to n8n webhook
+    try {
+      await fetch('https://omi7972.app.n8n.cloud/webhook/e5616171-e3b5-4c39-81d4-67409f9fa60a/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversationId,
+          userMessage: message,
+          aiResponse,
+          history,
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch (webhookError) {
+      console.error('Webhook error:', webhookError);
     }
 
     return new Response(
-      JSON.stringify({ 
-        response: aiResponse,
-        success: true 
-      }),
-      { 
-        status: 200, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: true, response: aiResponse }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
   } catch (error) {
-    console.error('Chat function error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Chat error:', error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
+
+async function callGemini(history: any[], message: string): Promise<string> {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          ...history.map(h => ({
+            role: h.role === 'user' ? 'user' : 'model',
+            parts: [{ text: h.content }]
+          })),
+          { role: 'user', parts: [{ text: message }] }
+        ],
+        generationConfig: {
+          temperature: 0.9,
+          maxOutputTokens: 2048,
+        }
+      })
+    }
+  );
+
+  const data = await response.json();
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function callAnthropic(history: any[], message: string): Promise<string> {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': ANTHROPIC_API_KEY!,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 2048,
+      messages: [
+        ...history.map(h => ({ role: h.role, content: h.content })),
+        { role: 'user', content: message }
+      ]
+    })
+  });
+
+  const data = await response.json();
+  return data.content[0].text;
+}
+
+async function callGroq(history: any[], message: string): Promise<string> {
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        ...history.map(h => ({ role: h.role, content: h.content })),
+        { role: 'user', content: message }
+      ],
+      temperature: 0.9,
+      max_tokens: 2048,
+    })
+  });
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}
+
+async function callOpenAI(history: any[], message: string): Promise<string> {
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini',
+      messages: [
+        ...history.map(h => ({ role: h.role, content: h.content })),
+        { role: 'user', content: message }
+      ],
+      temperature: 0.9,
+      max_tokens: 2048,
+    })
+  });
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+}

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Chat() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     checkAuth();
@@ -37,9 +38,9 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex-1">
-        <ChatInterface />
+      <Sidebar isOpen={isSidebarOpen} />
+      <div className="flex-1 overflow-hidden">
+        <ChatInterface onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       </div>
     </div>
   );

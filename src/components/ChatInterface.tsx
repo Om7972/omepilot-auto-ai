@@ -3,7 +3,8 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, Plus } from "lucide-react";
+import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -25,13 +26,18 @@ const quickActions = [
   "Design a logo",
 ];
 
-export const ChatInterface = () => {
+interface ChatInterfaceProps {
+  onToggleSidebar?: () => void;
+}
+
+export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const { conversationId } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState("Om");
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (conversationId) {
@@ -113,11 +119,12 @@ export const ChatInterface = () => {
         return;
       }
 
-      // Call edge function
+      // Call edge function with AI provider
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           message: messageText,
           conversationId,
+          provider: 'gemini', // Can be changed to 'anthropic', 'groq', or 'openai'
         },
       });
 
@@ -134,6 +141,31 @@ export const ChatInterface = () => {
     }
   };
 
+  const handleNewChat = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({ user_id: user.id, title: 'New Conversation' })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Failed to create conversation');
+      return;
+    }
+
+    window.location.href = `/chat/${data.id}`;
+  };
+
+  const handleGenerateImage = () => {
+    toast.info('Opening Creator Gallery...', { duration: 1000 });
+    setTimeout(() => {
+      window.location.href = '/creator-gallery';
+    }, 500);
+  };
+
   const handleQuickAction = (action: string) => {
     setInput(action);
   };
@@ -144,6 +176,13 @@ export const ChatInterface = () => {
       handleSend();
     }
   };
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+    }
+  }, [input]);
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -204,43 +243,67 @@ export const ChatInterface = () => {
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t border-border p-6">
+      <div className="border-t border-border p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-center gap-2 bg-card rounded-3xl border border-input p-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="rounded-full hover:bg-muted"
-            >
-              <Plus className="h-5 w-5" />
-            </Button>
+          <div className="relative flex items-end gap-2 bg-card rounded-3xl border border-input p-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="rounded-full hover:bg-muted flex-shrink-0"
+                >
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-56">
+                <DropdownMenuItem onClick={onToggleSidebar}>
+                  <PanelLeftClose className="h-4 w-4 mr-2" />
+                  Toggle Sidebar
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleNewChat}>
+                  <MessageSquarePlus className="h-4 w-4 mr-2" />
+                  New Chat
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleGenerateImage}>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Generate Image
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             <Textarea
+              ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Message Omepilot"
-              className="flex-1 border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[20px] max-h-32"
+              className="flex-1 border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-2"
               rows={1}
             />
 
-            <Button
-              size="icon"
-              variant="ghost"
-              className="rounded-full hover:bg-muted"
-            >
-              <Mic className="h-5 w-5" />
-            </Button>
+            <div className="flex gap-1 flex-shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-full hover:bg-muted"
+              >
+                <Mic className="h-5 w-5" />
+              </Button>
 
-            <Button
-              size="icon"
-              onClick={handleSend}
-              disabled={!input.trim() || isLoading}
-              className="rounded-full bg-primary hover:bg-primary/90"
-            >
-              <Send className="h-5 w-5" />
-            </Button>
+              <Button
+                size="icon"
+                onClick={handleSend}
+                disabled={!input.trim() || isLoading}
+                className="rounded-full bg-primary hover:bg-primary/90"
+              >
+                <Send className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground text-center mt-2">
+            Powered by multiple AI providers for the best responses
+          </p>
         </div>
       </div>
     </div>

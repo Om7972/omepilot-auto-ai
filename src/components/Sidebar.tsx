@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Compass, Palette, FlaskConical, FileText, Plus, LogOut, MessageSquare } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import omepilotLogo from "@/assets/omepilot-logo.png";
@@ -13,8 +13,13 @@ interface Conversation {
   created_at: string;
 }
 
-export const Sidebar = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+}
+
+export const Sidebar = ({ isOpen = true }: SidebarProps) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
@@ -77,8 +82,10 @@ export const Sidebar = () => {
     navigate('/auth');
   };
 
+  if (!isOpen) return null;
+
   return (
-    <div className="flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border">
+    <div className="flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
         <img src={omepilotLogo} alt="Omepilot" className="w-8 h-8" />
@@ -95,18 +102,22 @@ export const Sidebar = () => {
 
       {/* Navigation */}
       <div className="flex flex-col gap-1 p-3 border-b border-sidebar-border">
-        <Button variant="ghost" className="justify-start gap-3 hover:bg-sidebar-accent">
+        <Button
+          variant={location.pathname === '/discover' ? 'default' : 'ghost'}
+          onClick={() => navigate('/discover')}
+          className="justify-start gap-3 hover:bg-sidebar-accent"
+        >
           <Compass className="h-5 w-5" />
           Discover
         </Button>
-        <Button variant="ghost" className="justify-start gap-3 hover:bg-sidebar-accent">
+        <Button
+          variant={location.pathname === '/creator-gallery' ? 'default' : 'ghost'}
+          onClick={() => navigate('/creator-gallery')}
+          className="justify-start gap-3 hover:bg-sidebar-accent"
+        >
           <Palette className="h-5 w-5" />
           Creator Gallery
           <span className="ml-auto text-xs bg-primary px-2 py-0.5 rounded-md">New</span>
-        </Button>
-        <Button variant="ghost" className="justify-start gap-3 hover:bg-sidebar-accent">
-          <FlaskConical className="h-5 w-5" />
-          Labs
         </Button>
       </div>
 
