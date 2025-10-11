@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
+import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import omepilotLogo from "@/assets/omepilot-logo.png";
@@ -24,6 +24,9 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Om");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
+  const [selectedTheme, setSelectedTheme] = useState<string>("Night");
+  const [selectedVoice, setSelectedVoice] = useState<string>("Rain");
 
   useEffect(() => {
     loadConversations();
@@ -213,22 +216,78 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled className="flex justify-between">
-              <span>Voice</span>
-              <span className="text-muted-foreground">RAIN</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled className="flex justify-between">
-              <span>Language</span>
-              <span className="text-muted-foreground">EN</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem disabled className="flex justify-between">
-              <span>Theme</span>
-              <span className="text-muted-foreground">NIGHT</span>
-            </DropdownMenuItem>
+            
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Mic className="h-4 w-4 mr-2" />
+                <span>Voice</span>
+                <span className="ml-auto text-xs text-muted-foreground">{selectedVoice}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => { setSelectedVoice("Rain"); toast.success("Voice set to Rain"); }}>
+                  Rain
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedVoice("Sky"); toast.success("Voice set to Sky"); }}>
+                  Sky
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedVoice("Echo"); toast.success("Voice set to Echo"); }}>
+                  Echo
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Globe className="h-4 w-4 mr-2" />
+                <span>Language</span>
+                <span className="ml-auto text-xs text-muted-foreground">{selectedLanguage}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => { setSelectedLanguage("English"); toast.success("Language set to English"); }}>
+                  English
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedLanguage("Spanish"); toast.success("Language set to Spanish"); }}>
+                  Spanish
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedLanguage("French"); toast.success("Language set to French"); }}>
+                  French
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedLanguage("German"); toast.success("Language set to German"); }}>
+                  German
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <Moon className="h-4 w-4 mr-2" />
+                <span>Theme</span>
+                <span className="ml-auto text-xs text-muted-foreground">{selectedTheme}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem onClick={() => { setSelectedTheme("Night"); toast.success("Theme set to Night"); }}>
+                  Night
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedTheme("Day"); toast.success("Theme set to Day"); }}>
+                  Day
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setSelectedTheme("Auto"); toast.success("Theme set to Auto"); }}>
+                  Auto
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>Manage memory</DropdownMenuItem>
-            <DropdownMenuItem disabled>Give feedback</DropdownMenuItem>
-            <DropdownMenuItem disabled>About</DropdownMenuItem>
+            
+            <DropdownMenuItem onClick={() => toast.info("About Omepilot: Your AI-powered assistant")}>
+              <Info className="h-4 w-4 mr-2" />
+              About
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => toast.success("Feedback form opened")}>
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Give feedback
+            </DropdownMenuItem>
+            
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="text-destructive">
               <LogOut className="h-4 w-4 mr-2" />

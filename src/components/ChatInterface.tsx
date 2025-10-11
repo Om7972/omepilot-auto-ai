@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain } from "lucide-react";
+import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -272,9 +272,15 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64 bg-card border-border">
+                <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleNewChat}>
                   <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Create new conversation
+                  Start new conversation
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleNewChat}>
+                  <MessageCircle className="h-4 w-4 mr-2" />
+                  Start new chat
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleNewPage}>
                   <FileText className="h-4 w-4 mr-2" />
@@ -282,8 +288,8 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onToggleSidebar}>
-                  <PanelLeftClose className="h-4 w-4 mr-2" />
-                  Close sidebar
+                  <PanelLeft className="h-4 w-4 mr-2" />
+                  Toggle sidebar
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleGenerateImage}>
