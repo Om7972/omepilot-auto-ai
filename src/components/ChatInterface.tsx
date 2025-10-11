@@ -3,8 +3,8 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -30,12 +30,20 @@ interface ChatInterfaceProps {
   onToggleSidebar?: () => void;
 }
 
+const AI_MODELS = [
+  { id: 'gpt-5', name: 'Smart (GPT-5)', icon: Brain, description: 'Best for complex reasoning' },
+  { id: 'gemini', name: 'Quick response', icon: Zap, description: 'Fast everyday conversation' },
+  { id: 'groq', name: 'Groq-4-fast', icon: Zap, description: 'Ultra-fast responses' },
+  { id: 'anthropic', name: 'Think Deeper', icon: Brain, description: 'Better for complex topics' },
+];
+
 export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const { conversationId } = useParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState("Om");
+  const [selectedModel, setSelectedModel] = useState('gemini');
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -119,12 +127,12 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
         return;
       }
 
-      // Call edge function with AI provider
+      // Call edge function with selected AI provider
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           message: messageText,
           conversationId,
-          provider: 'gemini', // Can be changed to 'anthropic', 'groq', or 'openai'
+          provider: selectedModel,
         },
       });
 
@@ -139,6 +147,13 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleNewPage = () => {
+    toast.info('Opening page creator...', { duration: 1000 });
+    setTimeout(() => {
+      window.location.href = '/create-page';
+    }, 500);
   };
 
   const handleNewChat = async () => {
@@ -256,19 +271,57 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                   <Plus className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem onClick={onToggleSidebar}>
-                  <PanelLeftClose className="h-4 w-4 mr-2" />
-                  Toggle Sidebar
-                </DropdownMenuItem>
+              <DropdownMenuContent align="start" className="w-64 bg-card border-border">
                 <DropdownMenuItem onClick={handleNewChat}>
                   <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  New Chat
+                  Create new conversation
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleNewPage}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Create new page
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onToggleSidebar}>
+                  <PanelLeftClose className="h-4 w-4 mr-2" />
+                  Close sidebar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleGenerateImage}>
                   <Sparkles className="h-4 w-4 mr-2" />
                   Generate Image
                 </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="rounded-full hover:bg-muted flex-shrink-0 text-sm gap-2"
+                >
+                  {AI_MODELS.find(m => m.id === selectedModel)?.name || 'Quick response'}
+                  <Zap className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-80 bg-card border-border">
+                <DropdownMenuLabel>Choose AI Model</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {AI_MODELS.map((model) => (
+                  <DropdownMenuItem
+                    key={model.id}
+                    onClick={() => setSelectedModel(model.id)}
+                    className="flex items-start gap-3 p-3 cursor-pointer"
+                  >
+                    <model.icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <div className="font-medium">{model.name}</div>
+                      <div className="text-xs text-muted-foreground">{model.description}</div>
+                    </div>
+                    {selectedModel === model.id && (
+                      <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
+                    )}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
             

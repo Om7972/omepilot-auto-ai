@@ -23,7 +23,7 @@ export const CreatorGallery = () => {
 
   const handleGenerate = async () => {
     if (!prompt.trim()) {
-      toast.error('Please enter a prompt');
+      toast.error('Please enter a prompt to generate an image');
       return;
     }
 
@@ -34,17 +34,21 @@ export const CreatorGallery = () => {
         body: { prompt: prompt.trim() }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Function invocation error:', error);
+        throw error;
+      }
 
-      if (data.success) {
+      if (data.success && data.imageUrl) {
         setImageUrl(data.imageUrl);
         toast.success('Image generated successfully!');
       } else {
-        toast.error('Failed to generate image');
+        console.error('Generation failed:', data);
+        toast.error(data.error || 'Failed to generate image. Please check the logs.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Image generation error:', error);
-      toast.error('Failed to generate image');
+      toast.error(error.message || 'Failed to generate image. Please try again.');
     } finally {
       setIsLoading(false);
     }

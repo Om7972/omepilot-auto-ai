@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Compass, Palette, Plus, LogOut, MessageSquare } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import omepilotLogo from "@/assets/omepilot-logo.png";
@@ -21,9 +22,12 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [userEmail, setUserEmail] = useState<string>("");
+  const [userName, setUserName] = useState<string>("Om");
 
   useEffect(() => {
     loadConversations();
+    loadUserInfo();
 
     // Subscribe to conversation changes
     const channel = supabase
@@ -42,18 +46,58 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
     };
   }, []);
 
+  const loadUserInfo = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserEmail(user.email || "");
+      const { data } = await supabase
+        .from('profiles')
+        .select('username')
+        .eq('id', user.id)
+        .single();
+      
+      if (data?.username) {
+        setUserName(data.username);
+      }
+    }
+  };
+
   const loadConversations = async () => {
-    const { data, error } = await supabase
+    const { data: convData, error: convError } = await supabase
       .from('conversations')
       .select('*')
       .order('updated_at', { ascending: false });
 
-    if (error) {
-      console.error('Error loading conversations:', error);
+    if (convError) {
+      console.error('Error loading conversations:', convError);
       return;
     }
 
-    setConversations(data || []);
+    // Get first message for each conversation to use as title
+    const conversationsWithTitles = await Promise.all(
+      (convData || []).map(async (conv) => {
+        const { data: messages } = await supabase
+          .from('messages')
+          .select('content')
+          .eq('conversation_id', conv.id)
+          .eq('role', 'user')
+          .order('created_at', { ascending: true })
+          .limit(1);
+
+        if (messages && messages.length > 0) {
+          const firstMessage = messages[0].content;
+          return {
+            ...conv,
+            title: firstMessage.length > 30 
+              ? firstMessage.substring(0, 30) + '...' 
+              : firstMessage
+          };
+        }
+        return conv;
+      })
+    );
+
+    setConversations(conversationsWithTitles);
   };
 
   const handleNewChat = async () => {
@@ -143,16 +187,55 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
         </ScrollArea>
       </div>
 
-      {/* Logout */}
+      {/* User Profile */}
       <div className="p-3 border-t border-sidebar-border">
-        <Button
-          variant="ghost"
-          onClick={handleLogout}
-          className="w-full justify-start gap-3 hover:bg-sidebar-accent"
-        >
-          <LogOut className="h-5 w-5" />
-          Logout
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-3 hover:bg-sidebar-accent"
+            >
+              <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
+                {userName.charAt(0).toUpperCase()}
+              </div>
+              <div className="flex-1 text-left overflow-hidden">
+                <div className="font-medium truncate">{userName}</div>
+                <div className="text-xs text-muted-foreground truncate">{userEmail}</div>
+              </div>
+              <ChevronDown className="h-4 w-4 ml-auto" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-64 bg-card border-border">
+            <DropdownMenuLabel>
+              <div className="flex flex-col gap-1">
+                <div className="font-semibold">{userName}</div>
+                <div className="text-xs font-normal text-muted-foreground">{userEmail}</div>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled className="flex justify-between">
+              <span>Voice</span>
+              <span className="text-muted-foreground">RAIN</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled className="flex justify-between">
+              <span>Language</span>
+              <span className="text-muted-foreground">EN</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem disabled className="flex justify-between">
+              <span>Theme</span>
+              <span className="text-muted-foreground">NIGHT</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem disabled>Manage memory</DropdownMenuItem>
+            <DropdownMenuItem disabled>Give feedback</DropdownMenuItem>
+            <DropdownMenuItem disabled>About</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

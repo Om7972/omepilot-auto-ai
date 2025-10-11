@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import Discover from "./pages/Discover";
 import CreatorGalleryPage from "./pages/CreatorGallery";
+import CreatePage from "./pages/CreatePage";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -57,6 +58,7 @@ const App = () => (
           <Route path="/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
           <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
           <Route path="/creator-gallery" element={<ProtectedRoute><CreatorGalleryPage /></ProtectedRoute>} />
+          <Route path="/create-page" element={<ProtectedRoute><CreatePage /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
