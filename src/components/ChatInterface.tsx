@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -44,8 +44,10 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState("Om");
   const [selectedModel, setSelectedModel] = useState('gemini');
+  const [isListening, setIsListening] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
     if (conversationId) {
@@ -199,6 +201,47 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     }
   }, [input]);
 
+  useEffect(() => {
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = false;
+
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInput(prev => prev + (prev ? ' ' : '') + transcript);
+        setIsListening(false);
+      };
+
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+        toast.error('Voice recognition error. Please try again.');
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+    }
+  }, []);
+
+  const toggleVoiceInput = () => {
+    if (!recognitionRef.current) {
+      toast.error('Voice input not supported in your browser');
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current.start();
+      setIsListening(true);
+      toast.info('Listening...');
+    }
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Messages */}
@@ -261,16 +304,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       <div className="border-t border-border p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
           <div className="relative flex items-end gap-2 bg-card rounded-3xl border border-input p-2">
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onToggleSidebar}
-              className="rounded-full hover:bg-muted flex-shrink-0"
-              title="Close sidebar"
-            >
-              <PanelLeftClose className="h-5 w-5" />
-            </Button>
-
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -278,12 +311,18 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                   variant="ghost"
                   className="rounded-full hover:bg-muted flex-shrink-0"
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <Plus className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-64 bg-card border-border z-50">
-                <DropdownMenuLabel>Start New Chat</DropdownMenuLabel>
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={onToggleSidebar}>
+                  <PanelLeftClose className="h-4 w-4 mr-2" />
+                  Close sidebar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Start New Chat</DropdownMenuLabel>
                 <DropdownMenuItem onClick={handleNewChat}>
                   <MessageSquarePlus className="h-4 w-4 mr-2" />
                   Create new conversation
@@ -305,7 +344,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                   <Zap className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-80 bg-card border-border">
+              <DropdownMenuContent align="start" className="w-80 bg-card border-border z-50">
                 <DropdownMenuLabel>Choose AI Model</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {AI_MODELS.map((model) => (
@@ -341,7 +380,9 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
               <Button
                 size="icon"
                 variant="ghost"
-                className="rounded-full hover:bg-muted"
+                onClick={toggleVoiceInput}
+                className={`rounded-full hover:bg-muted ${isListening ? 'bg-primary/20 text-primary' : ''}`}
+                title="Voice input"
               >
                 <Mic className="h-5 w-5" />
               </Button>

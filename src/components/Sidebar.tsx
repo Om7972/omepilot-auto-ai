@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
   const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
   const [selectedTheme, setSelectedTheme] = useState<string>("Night");
   const [selectedVoice, setSelectedVoice] = useState<string>("Rain");
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
     loadConversations();
@@ -129,6 +131,34 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
     navigate('/auth');
   };
 
+  const groupConversationsByDate = () => {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const lastWeek = new Date(today);
+    lastWeek.setDate(lastWeek.getDate() - 7);
+
+    const filtered = conversations.filter(conv => 
+      conv.title.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    return {
+      today: filtered.filter(conv => new Date(conv.created_at) >= today),
+      yesterday: filtered.filter(conv => {
+        const date = new Date(conv.created_at);
+        return date >= yesterday && date < today;
+      }),
+      pastWeek: filtered.filter(conv => {
+        const date = new Date(conv.created_at);
+        return date >= lastWeek && date < yesterday;
+      }),
+      older: filtered.filter(conv => new Date(conv.created_at) < lastWeek),
+    };
+  };
+
+  const groupedConversations = groupConversationsByDate();
+
   if (!isOpen) return null;
 
   return (
@@ -145,6 +175,20 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
         >
           <Plus className="h-5 w-5" />
         </Button>
+      </div>
+
+      {/* Search Box */}
+      <div className="p-3 border-b border-sidebar-border">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Search conversations..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 bg-background border-input focus-visible:ring-1 h-9"
+          />
+        </div>
       </div>
 
       {/* Navigation */}
@@ -175,17 +219,73 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
         </div>
         <ScrollArea className="flex-1 px-3">
           <div className="flex flex-col gap-1 pb-4">
-            {conversations.map((conv) => (
-              <Link key={conv.id} to={`/chat/${conv.id}`}>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
-                >
-                  <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{conv.title}</span>
-                </Button>
-              </Link>
-            ))}
+            {groupedConversations.today.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Today</h4>
+                {groupedConversations.today.map((conv) => (
+                  <Link key={conv.id} to={`/chat/${conv.id}`}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
+                    >
+                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{conv.title}</span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {groupedConversations.yesterday.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Yesterday</h4>
+                {groupedConversations.yesterday.map((conv) => (
+                  <Link key={conv.id} to={`/chat/${conv.id}`}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
+                    >
+                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{conv.title}</span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {groupedConversations.pastWeek.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Past Week</h4>
+                {groupedConversations.pastWeek.map((conv) => (
+                  <Link key={conv.id} to={`/chat/${conv.id}`}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
+                    >
+                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{conv.title}</span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
+
+            {groupedConversations.older.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Older</h4>
+                {groupedConversations.older.map((conv) => (
+                  <Link key={conv.id} to={`/chat/${conv.id}`}>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
+                    >
+                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate">{conv.title}</span>
+                    </Button>
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </ScrollArea>
       </div>
