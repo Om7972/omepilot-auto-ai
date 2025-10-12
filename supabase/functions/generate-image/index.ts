@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const FAL_API_KEY = Deno.env.get('FALAI_API_KEY');
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,47 +15,67 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json();
     
-    console.log('Generating image with FAL AI for prompt:', prompt);
+    if (!LOVABLE_API_KEY) {
+      throw new Error('LOVABLE_API_KEY is not configured');
+    }
+    
+    console.log('Generating image with Lovable AI for prompt:', prompt);
 
-    // Submit the generation request
-    const submitResponse = await fetch('https://fal.run/fal-ai/flux/schnell', {
+    // Generate image using Lovable AI Gateway
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Key ${FAL_API_KEY}`,
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt,
-        image_size: "landscape_16_9",
-        num_inference_steps: 4,
-        num_images: 1,
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        modalities: ['image', 'text']
       }),
     });
 
-    if (!submitResponse.ok) {
-      const error = await submitResponse.text();
-      console.error('FAL API error:', error);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+      if (response.status === 402) {
+        throw new Error('Payment required. Please add funds to your Lovable AI workspace.');
+      }
+      
       throw new Error('Failed to generate image');
     }
 
-    const result = await submitResponse.json();
-    console.log('FAL API response:', result);
+    const result = await response.json();
+    console.log('Lovable AI response received');
 
-    // Extract image URL from response
-    const imageUrl = result.images?.[0]?.url || result.image?.url;
+    // Extract base64 image from response
+    const imageBase64 = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     
-    if (!imageUrl) {
+    if (!imageBase64) {
+      console.error('No image in response:', JSON.stringify(result));
       throw new Error('No image URL in response');
     }
 
     return new Response(
-      JSON.stringify({ success: true, imageUrl }),
+      JSON.stringify({ success: true, imageUrl: imageBase64 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Image generation error:', error);
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ 
+        success: false, 
+        error: error instanceof Error ? error.message : 'Unknown error' 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

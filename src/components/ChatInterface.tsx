@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, Plus, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -261,6 +261,16 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       <div className="border-t border-border p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
           <div className="relative flex items-end gap-2 bg-card rounded-3xl border border-input p-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onToggleSidebar}
+              className="rounded-full hover:bg-muted flex-shrink-0"
+              title="Close sidebar"
+            >
+              <PanelLeftClose className="h-5 w-5" />
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -268,33 +278,19 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                   variant="ghost"
                   className="rounded-full hover:bg-muted flex-shrink-0"
                 >
-                  <Plus className="h-5 w-5" />
+                  <MessageCircle className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 bg-card border-border">
-                <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+              <DropdownMenuContent align="start" className="w-64 bg-card border-border z-50">
+                <DropdownMenuLabel>Start New Chat</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleNewChat}>
                   <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Start new conversation
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleNewChat}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Start new chat
+                  Create new conversation
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleNewPage}>
                   <FileText className="h-4 w-4 mr-2" />
                   Create new page
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onToggleSidebar}>
-                  <PanelLeft className="h-4 w-4 mr-2" />
-                  Toggle sidebar
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleGenerateImage}>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Image
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

@@ -76,13 +76,13 @@ export const CreatorGallery = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background p-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-foreground mb-2">Creator Gallery</h1>
-        <p className="text-lg text-primary italic">"{currentQuote}"</p>
+    <div className="flex flex-col h-screen bg-background p-4 md:p-6">
+      <div className="mb-4 md:mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-foreground mb-2">Creator Gallery</h1>
+        <p className="text-base md:text-lg text-primary italic">"{currentQuote}"</p>
       </div>
 
-      <div className="flex gap-2 mb-6">
+      <div className="flex flex-col sm:flex-row gap-2 mb-4 md:mb-6">
         <Input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
@@ -93,7 +93,7 @@ export const CreatorGallery = () => {
         <Button 
           onClick={handleGenerate}
           disabled={isLoading || !prompt.trim()}
-          className="px-6"
+          className="px-6 w-full sm:w-auto"
         >
           {isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -108,7 +108,7 @@ export const CreatorGallery = () => {
 
       <ScrollArea className="flex-1">
         {imageUrl ? (
-          <Card className="p-4 bg-card">
+          <Card className="p-4 bg-card max-w-4xl mx-auto">
             <div className="relative group">
               <img 
                 src={imageUrl} 
@@ -119,23 +119,23 @@ export const CreatorGallery = () => {
                 <Button
                   onClick={handleDownload}
                   size="icon"
-                  className="bg-background/80 backdrop-blur-sm"
+                  className="bg-background/80 backdrop-blur-sm hover:bg-background"
                 >
                   <Download className="h-4 w-4" />
                 </Button>
               </div>
             </div>
-            <p className="mt-4 text-sm text-muted-foreground">
+            <p className="mt-4 text-sm text-muted-foreground break-words">
               <span className="font-semibold">Prompt:</span> {prompt}
             </p>
           </Card>
         ) : (
           <div className="flex items-center justify-center h-full">
-            <div className="text-center space-y-4">
-              <Sparkles className="h-16 w-16 mx-auto text-primary opacity-50" />
+            <div className="text-center space-y-4 px-4">
+              <Sparkles className="h-12 w-12 md:h-16 md:w-16 mx-auto text-primary opacity-50" />
               <div>
-                <p className="text-lg font-medium text-foreground">Ready to create something amazing?</p>
-                <p className="text-muted-foreground">Enter a prompt above to generate your image</p>
+                <p className="text-base md:text-lg font-medium text-foreground">Ready to create something amazing?</p>
+                <p className="text-sm md:text-base text-muted-foreground">Enter a prompt above to generate your image</p>
               </div>
             </div>
           </div>
