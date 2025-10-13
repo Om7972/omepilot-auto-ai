@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
+import { PersonaSwitcher } from "@/components/PersonaSwitcher";
+import { FileUpload } from "@/components/FileUpload";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -45,6 +47,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const [userName, setUserName] = useState("Om");
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
+  const [selectedPersona, setSelectedPersona] = useState<any>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -304,67 +307,12 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       <div className="border-t border-border p-4 md:p-6">
         <div className="max-w-3xl mx-auto">
           <div className="relative flex items-end gap-2 bg-card rounded-3xl border border-input p-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="rounded-full hover:bg-muted flex-shrink-0"
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-64 bg-card border-border z-50">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onToggleSidebar}>
-                  <PanelLeftClose className="h-4 w-4 mr-2" />
-                  Close sidebar
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuLabel>Start New Chat</DropdownMenuLabel>
-                <DropdownMenuItem onClick={handleNewChat}>
-                  <MessageSquarePlus className="h-4 w-4 mr-2" />
-                  Create new conversation
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleNewPage}>
-                  <FileText className="h-4 w-4 mr-2" />
-                  Create new page
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <PersonaSwitcher 
+              selectedPersona={selectedPersona}
+              onPersonaChange={setSelectedPersona}
+            />
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="rounded-full hover:bg-muted flex-shrink-0 text-sm gap-2"
-                >
-                  {AI_MODELS.find(m => m.id === selectedModel)?.name || 'Quick response'}
-                  <Zap className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-80 bg-card border-border z-50">
-                <DropdownMenuLabel>Choose AI Model</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {AI_MODELS.map((model) => (
-                  <DropdownMenuItem
-                    key={model.id}
-                    onClick={() => setSelectedModel(model.id)}
-                    className="flex items-start gap-3 p-3 cursor-pointer"
-                  >
-                    <model.icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <div className="font-medium">{model.name}</div>
-                      <div className="text-xs text-muted-foreground">{model.description}</div>
-                    </div>
-                    {selectedModel === model.id && (
-                      <div className="h-2 w-2 rounded-full bg-primary mt-1.5" />
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <FileUpload conversationId={conversationId || ''} />
             
             <Textarea
               ref={textareaRef}

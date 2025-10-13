@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search, BookOpen, Brain } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -209,6 +209,30 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
           <Palette className="h-5 w-5" />
           Creator Gallery
           <span className="ml-auto text-xs bg-primary px-2 py-0.5 rounded-md">New</span>
+        </Button>
+        <Button
+          variant={location.pathname === '/quiz' ? 'default' : 'ghost'}
+          onClick={() => navigate('/quiz')}
+          className="justify-start gap-3 hover:bg-sidebar-accent"
+        >
+          <BookOpen className="h-5 w-5" />
+          Quiz Generator
+        </Button>
+        <Button
+          variant={location.pathname === '/search' ? 'default' : 'ghost'}
+          onClick={() => navigate('/search')}
+          className="justify-start gap-3 hover:bg-sidebar-accent"
+        >
+          <Globe className="h-5 w-5" />
+          Web Search
+        </Button>
+        <Button
+          variant={location.pathname === '/memory' ? 'default' : 'ghost'}
+          onClick={() => navigate('/memory')}
+          className="justify-start gap-3 hover:bg-sidebar-accent"
+        >
+          <Brain className="h-5 w-5" />
+          AI Memory
         </Button>
       </div>
 

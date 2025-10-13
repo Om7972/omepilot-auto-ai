@@ -9,6 +9,9 @@ import Chat from "./pages/Chat";
 import Discover from "./pages/Discover";
 import CreatorGalleryPage from "./pages/CreatorGallery";
 import CreatePage from "./pages/CreatePage";
+import QuizPage from "./pages/QuizPage";
+import SearchPage from "./pages/SearchPage";
+import MemoryPage from "./pages/MemoryPage";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -59,6 +62,9 @@ const App = () => (
           <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
           <Route path="/creator-gallery" element={<ProtectedRoute><CreatorGalleryPage /></ProtectedRoute>} />
           <Route path="/create-page" element={<ProtectedRoute><CreatePage /></ProtectedRoute>} />
+          <Route path="/quiz" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
+          <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
+          <Route path="/memory" element={<ProtectedRoute><MemoryPage /></ProtectedRoute>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
