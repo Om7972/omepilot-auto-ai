@@ -14,10 +14,46 @@ export type Database = {
   }
   public: {
     Tables: {
+      conversation_members: {
+        Row: {
+          color: string
+          conversation_id: string
+          id: string
+          joined_at: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id: string
+        }
+        Update: {
+          color?: string
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_members_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversations: {
         Row: {
           created_at: string
           id: string
+          is_collaborative: boolean | null
           title: string
           updated_at: string
           user_id: string
@@ -25,6 +61,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_collaborative?: boolean | null
           title: string
           updated_at?: string
           user_id: string
@@ -32,6 +69,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_collaborative?: boolean | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -89,6 +127,7 @@ export type Database = {
           created_at: string
           id: string
           role: string
+          user_id: string | null
         }
         Insert: {
           content: string
@@ -96,6 +135,7 @@ export type Database = {
           created_at?: string
           id?: string
           role: string
+          user_id?: string | null
         }
         Update: {
           content?: string
@@ -103,6 +143,7 @@ export type Database = {
           created_at?: string
           id?: string
           role?: string
+          user_id?: string | null
         }
         Relationships: [
           {

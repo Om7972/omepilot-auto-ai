@@ -6,15 +6,25 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
+import { CollaborativeSession } from "@/components/CollaborativeSession";
+import { UserTypingIndicator } from "@/components/UserTypingIndicator";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Message {
   id: string;
   role: string;
   content: string;
   created_at: string;
+  user_id?: string;
+}
+
+interface UserColor {
+  user_id: string;
+  color: string;
+  username: string;
 }
 
 const quickActions = [
@@ -48,14 +58,21 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<any>(null);
+  const [isCollaborative, setIsCollaborative] = useState(false);
+  const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const typingChannelRef = useRef<any>(null);
+  const typingTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
     if (conversationId) {
       loadMessages();
       loadUserName();
+      loadConversationInfo();
+      loadMemberColors();
 
       // Subscribe to new messages
       const channel = supabase
@@ -89,6 +106,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const loadUserName = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      setCurrentUserId(user.id);
       const { data } = await supabase
         .from('profiles')
         .select('username')
@@ -98,6 +116,51 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       if (data?.username) {
         setUserName(data.username);
       }
+    }
+  };
+
+  const loadConversationInfo = async () => {
+    if (!conversationId) return;
+
+    const { data } = await supabase
+      .from('conversations')
+      .select('is_collaborative')
+      .eq('id', conversationId)
+      .single();
+
+    if (data) {
+      setIsCollaborative(data.is_collaborative || false);
+    }
+  };
+
+  const loadMemberColors = async () => {
+    if (!conversationId) return;
+
+    const { data: members } = await supabase
+      .from('conversation_members')
+      .select('user_id, color')
+      .eq('conversation_id', conversationId);
+
+    if (members) {
+      const colorMap = new Map<string, UserColor>();
+      
+      await Promise.all(
+        members.map(async (member) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', member.user_id)
+            .single();
+
+          colorMap.set(member.user_id, {
+            user_id: member.user_id,
+            color: member.color,
+            username: profile?.username || 'User',
+          });
+        })
+      );
+
+      setUserColors(colorMap);
     }
   };
 
@@ -124,6 +187,11 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     const messageText = input.trim();
     setInput("");
     setIsLoading(true);
+
+    // Stop typing indicator
+    if (typingChannelRef.current) {
+      typingChannelRef.current.track({ typing: false });
+    }
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -202,7 +270,42 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       textareaRef.current.style.height = 'auto';
       textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
     }
-  }, [input]);
+
+    // Handle typing indicator
+    if (!conversationId || !isCollaborative) return;
+
+    if (input && !typingChannelRef.current) {
+      const channel = supabase.channel(`typing-${conversationId}`);
+      typingChannelRef.current = channel;
+      
+      channel.subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          const userColor = userColors.get(currentUserId || '');
+          await channel.track({
+            user_id: currentUserId,
+            username: userName,
+            color: userColor?.color || '#3B82F6',
+            typing: true,
+          });
+        }
+      });
+    }
+
+    if (input) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = setTimeout(() => {
+        if (typingChannelRef.current) {
+          typingChannelRef.current.track({ typing: false });
+        }
+      }, 2000);
+    }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [input, conversationId, isCollaborative, currentUserId, userName, userColors]);
 
   useEffect(() => {
     // Initialize speech recognition
@@ -245,8 +348,23 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     }
   };
 
+  const getUserColor = (userId?: string) => {
+    if (!userId) return null;
+    return userColors.get(userId);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
+      {/* Header with Collaborative Controls */}
+      {isCollaborative && conversationId && (
+        <div className="border-b border-border p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Collaborative Session</h2>
+          </div>
+          <CollaborativeSession conversationId={conversationId} isCollaborative={isCollaborative} />
+        </div>
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
         {messages.length === 0 ? (
@@ -270,24 +388,53 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
           </div>
         ) : (
           <div className="max-w-3xl mx-auto space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-4 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
+            {messages.map((message) => {
+              const userColor = message.user_id ? getUserColor(message.user_id) : null;
+              const isCurrentUser = message.user_id === currentUserId;
+
+              return (
                 <div
-                  className={`rounded-2xl px-4 py-3 max-w-[80%] ${
-                    message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-card text-card-foreground'
+                  key={message.id}
+                  className={`flex gap-3 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  {message.role === 'user' && isCollaborative && userColor && (
+                    <Avatar 
+                      className="h-8 w-8 mt-1" 
+                      style={{ backgroundColor: userColor.color }}
+                    >
+                      <AvatarFallback style={{ backgroundColor: userColor.color, color: 'white' }}>
+                        {userColor.username[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className="flex flex-col gap-1 max-w-[80%]">
+                    {message.role === 'user' && isCollaborative && userColor && (
+                      <span className="text-xs px-2" style={{ color: userColor.color }}>
+                        {isCurrentUser ? 'You' : userColor.username}
+                      </span>
+                    )}
+                    <div
+                      className={`rounded-2xl px-4 py-3 ${
+                        message.role === 'user'
+                          ? isCollaborative && userColor
+                            ? 'text-white'
+                            : 'bg-primary text-primary-foreground'
+                          : 'bg-card text-card-foreground'
+                      }`}
+                      style={
+                        message.role === 'user' && isCollaborative && userColor
+                          ? { backgroundColor: userColor.color }
+                          : undefined
+                      }
+                    >
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             {isLoading && (
               <div className="flex gap-4 justify-start">
                 <div className="rounded-2xl px-4 py-3 bg-card text-card-foreground">
@@ -299,6 +446,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                 </div>
               </div>
             )}
+            {isCollaborative && <UserTypingIndicator conversationId={conversationId || ''} />}
           </div>
         )}
       </ScrollArea>

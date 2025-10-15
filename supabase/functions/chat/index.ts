@@ -30,13 +30,14 @@ serve(async (req) => {
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
-    // Save user message
+    // Save user message with user_id for collaborative tracking
     const { error: userMsgError } = await supabaseClient
       .from('messages')
       .insert({
         conversation_id: conversationId,
         role: 'user',
         content: message,
+        user_id: user.id
       });
 
     if (userMsgError) throw userMsgError;
