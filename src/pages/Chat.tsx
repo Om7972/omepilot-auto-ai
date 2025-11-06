@@ -10,14 +10,43 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
-    checkAuth();
+    checkAuthAndInitConversation();
   }, []);
 
-  const checkAuth = async () => {
+  const checkAuthAndInitConversation = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
       navigate('/auth');
+      return;
+    }
+
+    // Check if user has any conversations
+    const { data: conversations } = await supabase
+      .from('conversations')
+      .select('id')
+      .eq('user_id', session.user.id)
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    // If no conversations exist, create a default one
+    if (!conversations || conversations.length === 0) {
+      const { data: newConv, error } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: session.user.id,
+          title: 'New Conversation',
+        })
+        .select()
+        .single();
+
+      if (!error && newConv) {
+        navigate(`/chat/${newConv.id}`);
+        return;
+      }
+    } else {
+      // Redirect to most recent conversation
+      navigate(`/chat/${conversations[0].id}`);
       return;
     }
 
