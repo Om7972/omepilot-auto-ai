@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search, BookOpen, Brain } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search, BookOpen, Brain, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -17,9 +17,10 @@ interface Conversation {
 
 interface SidebarProps {
   isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar = ({ isOpen = true }: SidebarProps) => {
+export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -172,9 +173,21 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
           variant="ghost"
           onClick={handleNewChat}
           className="ml-auto hover:bg-sidebar-accent"
+          title="New Chat"
         >
           <Plus className="h-5 w-5" />
         </Button>
+        {onClose && (
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={onClose}
+            className="hover:bg-sidebar-accent"
+            title="Close Sidebar"
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        )}
       </div>
 
       {/* Search Box */}
