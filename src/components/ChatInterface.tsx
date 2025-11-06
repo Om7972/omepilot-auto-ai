@@ -355,26 +355,15 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Main Header with Sidebar Toggle */}
-      <div className="border-b border-border p-3 md:p-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {onToggleSidebar && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={onToggleSidebar}
-              className="rounded-lg hover:bg-muted"
-              title="Toggle sidebar"
-            >
-              <PanelLeft className="h-5 w-5" />
-            </Button>
-          )}
-          <h2 className="text-lg font-semibold">Omepilot</h2>
-        </div>
-        {isCollaborative && conversationId && (
+      {/* Header with Collaborative Controls */}
+      {isCollaborative && conversationId && (
+        <div className="border-b border-border p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">Collaborative Session</h2>
+          </div>
           <CollaborativeSession conversationId={conversationId} isCollaborative={isCollaborative} />
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
