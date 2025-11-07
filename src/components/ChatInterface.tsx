@@ -8,6 +8,7 @@ import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
+import { ChatLandingPage } from "@/components/ChatLandingPage";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,16 +28,6 @@ interface UserColor {
   username: string;
 }
 
-const quickActions = [
-  "Create an image",
-  "Write a first draft",
-  "Improve writing",
-  "Write a joke",
-  "Rewrite a classic",
-  "Improve communication",
-  "Clean up notes",
-  "Design a logo",
-];
 
 interface ChatInterfaceProps {
   onToggleSidebar?: () => void;
@@ -379,24 +370,10 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       {/* Messages */}
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full gap-8">
-            <h1 className="text-4xl font-semibold text-foreground">
-              Nice to see you, {userName}. What's new?
-            </h1>
-            
-            <div className="flex flex-wrap gap-3 justify-center max-w-3xl">
-              {quickActions.map((action) => (
-                <Button
-                  key={action}
-                  variant="secondary"
-                  onClick={() => handleQuickAction(action)}
-                  className="hover:bg-muted"
-                >
-                  {action}
-                </Button>
-              ))}
-            </div>
-          </div>
+          <ChatLandingPage 
+            userName={userName} 
+            onQuickAction={handleQuickAction}
+          />
         ) : (
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.map((message) => {
