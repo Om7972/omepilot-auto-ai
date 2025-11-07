@@ -361,6 +361,39 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
             </Button>
           )}
           <h2 className="text-lg font-semibold">Omepilot</h2>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="rounded-lg hover:bg-muted"
+                title="Quick actions"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-56">
+              <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleNewChat}>
+                <MessageCircle className="mr-2 h-4 w-4" />
+                New Conversation
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleGenerateImage}>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Generate Image
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleNewPage}>
+                <FileText className="mr-2 h-4 w-4" />
+                Create Page
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => window.location.href = '/quiz'}>
+                <Brain className="mr-2 h-4 w-4" />
+                Generate Quiz
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
         {isCollaborative && conversationId && (
           <CollaborativeSession conversationId={conversationId} isCollaborative={isCollaborative} />
@@ -423,17 +456,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                 </div>
               );
             })}
-            {isLoading && (
-              <div className="flex gap-4 justify-start">
-                <div className="rounded-2xl px-4 py-3 bg-card text-card-foreground">
-                  <div className="flex gap-1">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <div className="w-2 h-2 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </div>
-                </div>
-              </div>
-            )}
             {isCollaborative && <UserTypingIndicator conversationId={conversationId || ''} />}
           </div>
         )}
