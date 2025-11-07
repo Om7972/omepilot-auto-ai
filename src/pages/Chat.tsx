@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Chat() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
     checkAuthAndInitConversation();
