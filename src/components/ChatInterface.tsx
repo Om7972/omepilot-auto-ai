@@ -47,7 +47,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const [userName, setUserName] = useState("Om");
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<any>(null);
+  const [selectedPersona, setSelectedPersona] = useState<string>('gpt-5');
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -397,31 +397,44 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
 
       {/* Input */}
       <div className="border-t border-border p-4 md:p-6">
-        <div className="max-w-3xl mx-auto">
-          <div className="relative flex items-end gap-2 bg-card rounded-3xl border border-input p-2">
-            <PersonaSwitcher 
-              selectedPersona={selectedPersona}
-              onPersonaChange={setSelectedPersona}
-            />
+        <div className="max-w-4xl mx-auto space-y-4">
+          {/* Greeting Header */}
+          {messages.length === 0 && (
+            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+              Nice to see you, {userName}. What's new?
+            </h1>
+          )}
 
-            <FileUpload conversationId={conversationId || ''} />
+          {/* Main Input Area */}
+          <div className="relative flex items-end gap-2 bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 p-3 shadow-lg">
+            <MessageSquarePlus className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-2" />
             
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Message Omepilot"
-              className="flex-1 border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-2"
-              rows={1}
-            />
+            <div className="flex-1 flex flex-col gap-2">
+              <Textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Message Copilot"
+                className="flex-1 border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-0 text-base placeholder:text-muted-foreground/60"
+                rows={1}
+              />
+              
+              <div className="flex items-center gap-2">
+                <PersonaSwitcher 
+                  selectedPersona={selectedPersona}
+                  onPersonaChange={setSelectedPersona}
+                />
+                <FileUpload conversationId={conversationId || ''} />
+              </div>
+            </div>
 
-            <div className="flex gap-1 flex-shrink-0">
+            <div className="flex gap-2 flex-shrink-0">
               <Button
                 size="icon"
                 variant="ghost"
                 onClick={toggleVoiceInput}
-                className={`rounded-full hover:bg-muted ${isListening ? 'bg-primary/20 text-primary' : ''}`}
+                className={`rounded-full hover:bg-accent h-10 w-10 ${isListening ? 'bg-primary/20 text-primary' : ''}`}
                 title="Voice input"
               >
                 <Mic className="h-5 w-5" />
@@ -431,15 +444,72 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
                 size="icon"
                 onClick={handleSend}
                 disabled={!input.trim() || isLoading}
-                className="rounded-full bg-primary hover:bg-primary/90"
+                className="rounded-full bg-primary hover:bg-primary/90 h-10 w-10"
               >
                 <Send className="h-5 w-5" />
               </Button>
             </div>
           </div>
-          <p className="text-xs text-muted-foreground text-center mt-2">
-            Powered by multiple AI providers for the best responses
-          </p>
+
+          {/* Quick Actions */}
+          {messages.length === 0 && (
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction('Create something new')}
+                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
+              >
+                Create
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction('Help me write a first draft')}
+                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
+              >
+                Write first draft
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction('Predict the future trends')}
+                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
+              >
+                Predict the future
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handleQuickAction('Improve my writing')}
+                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
+              >
+                Improve writing
+              </Button>
+            </div>
+          )}
+
+          {/* Secondary Quick Actions */}
+          {messages.length === 0 && (
+            <div className="flex flex-wrap gap-2 justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickAction('Draft a document')}
+                className="rounded-full text-muted-foreground hover:text-foreground"
+              >
+                Draft
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleQuickAction('Improve my communication')}
+                className="rounded-full text-muted-foreground hover:text-foreground"
+              >
+                Improve communication
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
