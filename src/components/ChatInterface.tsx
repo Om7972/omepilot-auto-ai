@@ -3,13 +3,12 @@ import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
 import { ChatLandingPage } from "@/components/ChatLandingPage";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -213,38 +212,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     }
   };
 
-  const handleNewPage = () => {
-    toast.info('Opening page creator...', { duration: 1000 });
-    setTimeout(() => {
-      window.location.href = '/create-page';
-    }, 500);
-  };
-
-  const handleNewChat = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({ user_id: user.id, title: 'New Conversation' })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error('Failed to create conversation');
-      return;
-    }
-
-    window.location.href = `/chat/${data.id}`;
-  };
-
-  const handleGenerateImage = () => {
-    toast.info('Opening Creator Gallery...', { duration: 1000 });
-    setTimeout(() => {
-      window.location.href = '/creator-gallery';
-    }, 500);
-  };
-
   const handleQuickAction = (action: string) => {
     setInput(action);
   };
@@ -361,39 +328,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
             </Button>
           )}
           <h2 className="text-lg font-semibold">Omepilot</h2>
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="rounded-lg hover:bg-muted"
-                title="Quick actions"
-              >
-                <Plus className="h-5 w-5" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuLabel>Quick Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleNewChat}>
-                <MessageCircle className="mr-2 h-4 w-4" />
-                New Conversation
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleGenerateImage}>
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate Image
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleNewPage}>
-                <FileText className="mr-2 h-4 w-4" />
-                Create Page
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = '/quiz'}>
-                <Brain className="mr-2 h-4 w-4" />
-                Generate Quiz
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
         {isCollaborative && conversationId && (
           <CollaborativeSession conversationId={conversationId} isCollaborative={isCollaborative} />
