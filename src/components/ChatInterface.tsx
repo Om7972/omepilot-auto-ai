@@ -47,7 +47,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const [userName, setUserName] = useState("Om");
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
-  const [selectedPersona, setSelectedPersona] = useState<string>('gpt-5');
+  const [selectedPersona, setSelectedPersona] = useState<string>('gemini');
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -195,7 +195,7 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
         body: {
           message: messageText,
           conversationId,
-          provider: selectedModel,
+          provider: selectedPersona,
         },
       });
 
@@ -423,7 +423,10 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
               <div className="flex items-center gap-2">
                 <PersonaSwitcher 
                   selectedPersona={selectedPersona}
-                  onPersonaChange={setSelectedPersona}
+                  onPersonaChange={(persona) => {
+                    setSelectedPersona(persona);
+                    setSelectedModel(persona);
+                  }}
                 />
                 <FileUpload conversationId={conversationId || ''} />
               </div>
