@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Plus, Trash2, Edit2, Save, X, Search, Download, Upload, Filter } from "lucide-react";
+import { Brain, Plus, Trash2, Edit2, Save, X, Search, Download, Upload, Filter, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Memory {
   id: string;
@@ -25,6 +26,13 @@ export const MemoryManager = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [categories, setCategories] = useState<string[]>([]);
+  const [aiSuggestions, setAiSuggestions] = useState<Array<{ key: string; value: string; category: string }>>([]);
+  const [isGeneratingSuggestions, setIsGeneratingSuggestions] = useState(false);
+  const [memoryInsights, setMemoryInsights] = useState<{ totalMemories: number; topCategory: string; recentActivity: number }>({
+    totalMemories: 0,
+    topCategory: '',
+    recentActivity: 0
+  });
 
   useEffect(() => {
     loadMemories();
@@ -32,7 +40,28 @@ export const MemoryManager = () => {
 
   useEffect(() => {
     filterMemories();
+    calculateInsights();
   }, [memories, searchQuery, categoryFilter]);
+
+  const calculateInsights = () => {
+    const categoryCounts: Record<string, number> = {};
+    memories.forEach(m => {
+      if (m.category) {
+        categoryCounts[m.category] = (categoryCounts[m.category] || 0) + 1;
+      }
+    });
+
+    const topCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '';
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const recentActivity = memories.filter(m => new Date(m.created_at) > lastWeek).length;
+
+    setMemoryInsights({
+      totalMemories: memories.length,
+      topCategory,
+      recentActivity
+    });
+  };
 
   const loadMemories = async () => {
     const { data, error } = await supabase
@@ -174,18 +203,115 @@ export const MemoryManager = () => {
     }
   };
 
+  const generateAISuggestions = async () => {
+    setIsGeneratingSuggestions(true);
+    try {
+      const memoryContext = memories.map(m => `${m.key}: ${m.value}`).join('\n');
+      
+      const { data, error } = await supabase.functions.invoke('chat', {
+        body: { 
+          message: `Based on these existing memories, suggest 3 useful additional memories that would be helpful to remember:\n${memoryContext}\n\nRespond with JSON array: [{"key": "...", "value": "...", "category": "..."}]`,
+          conversationId: 'memory-suggestions',
+          provider: 'gemini'
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        try {
+          const suggestions = JSON.parse(data.response.replace(/```json\n?/g, '').replace(/```\n?/g, ''));
+          setAiSuggestions(Array.isArray(suggestions) ? suggestions : []);
+          toast.success('AI suggestions generated!');
+        } catch {
+          toast.error('Failed to parse suggestions');
+        }
+      }
+    } catch (error) {
+      console.error('AI suggestion error:', error);
+      toast.error('Failed to generate suggestions');
+    } finally {
+      setIsGeneratingSuggestions(false);
+    }
+  };
+
+  const addSuggestion = async (suggestion: { key: string; value: string; category: string }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('user_memories')
+      .insert({
+        user_id: user.id,
+        ...suggestion
+      });
+
+    if (error) {
+      toast.error('Failed to add memory');
+      return;
+    }
+
+    toast.success('Memory added from suggestion');
+    setAiSuggestions(prev => prev.filter(s => s.key !== suggestion.key));
+    loadMemories();
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
-      <Card className="bg-card border-border">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            AI Memory Management
-          </CardTitle>
-          <CardDescription>
-            Teach the AI to remember important information about you
-          </CardDescription>
-        </CardHeader>
+    <div className="max-w-6xl mx-auto p-6 space-y-6">
+      {/* Insights Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Memories</p>
+                <p className="text-3xl font-bold text-primary">{memoryInsights.totalMemories}</p>
+              </div>
+              <Brain className="h-12 w-12 text-primary/50" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Top Category</p>
+                <p className="text-xl font-bold text-green-600">{memoryInsights.topCategory || 'None'}</p>
+              </div>
+              <Tag className="h-12 w-12 text-green-500/50" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Added This Week</p>
+                <p className="text-3xl font-bold text-blue-600">{memoryInsights.recentActivity}</p>
+              </div>
+              <TrendingUp className="h-12 w-12 text-blue-500/50" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="memories" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="memories">My Memories</TabsTrigger>
+          <TabsTrigger value="suggestions">AI Suggestions</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="memories" className="space-y-6">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-6 w-6 text-primary" />
+                AI Memory Management
+              </CardTitle>
+              <CardDescription>
+                Teach the AI to remember important information about you
+              </CardDescription>
+            </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
@@ -226,9 +352,9 @@ export const MemoryManager = () => {
             </Button>
           </div>
         </CardContent>
-      </Card>
+          </Card>
 
-      {/* Search and Filter Section */}
+          {/* Search and Filter Section */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
           <div className="flex flex-col md:flex-row gap-3">
@@ -274,10 +400,10 @@ export const MemoryManager = () => {
             {filteredMemories.length} of {memories.length} memories
           </div>
         </CardContent>
-      </Card>
+          </Card>
 
-      {/* Memories List */}
-      <div className="space-y-3">
+          {/* Memories List */}
+          <div className="space-y-3">
         {filteredMemories.length === 0 ? (
           <Card className="bg-card border-border">
             <CardContent className="p-8 text-center text-muted-foreground">
@@ -381,8 +507,80 @@ export const MemoryManager = () => {
               </CardContent>
             </Card>
           ))
-        )}
-      </div>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="suggestions" className="space-y-6">
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Sparkles className="h-6 w-6 text-primary" />
+                    AI-Powered Suggestions
+                  </CardTitle>
+                  <CardDescription>
+                    Let AI suggest useful memories based on your existing data
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={generateAISuggestions}
+                  disabled={isGeneratingSuggestions || memories.length === 0}
+                  className="gap-2"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  {isGeneratingSuggestions ? 'Generating...' : 'Generate Suggestions'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {memories.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Brain className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Add some memories first to get AI suggestions</p>
+                </div>
+              ) : aiSuggestions.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Sparkles className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                  <p>Click "Generate Suggestions" to get AI-powered memory recommendations</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {aiSuggestions.map((suggestion, index) => (
+                    <Card key={index} className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Badge variant="outline" className="bg-primary/10">
+                                {suggestion.category}
+                              </Badge>
+                              <Sparkles className="h-3 w-3 text-primary" />
+                            </div>
+                            <div className="space-y-1">
+                              <p className="font-semibold text-primary">{suggestion.key}</p>
+                              <p className="text-sm text-foreground">{suggestion.value}</p>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => addSuggestion(suggestion)}
+                            className="ml-4"
+                          >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

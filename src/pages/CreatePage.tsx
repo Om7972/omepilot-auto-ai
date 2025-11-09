@@ -62,25 +62,110 @@ export default function CreatePage() {
         toast.success('Conversation created!');
         navigate(`/chat/${data.id}`);
       } else if (selectedType === 'document') {
-        toast.info('Creating document with AI...');
-        // Navigate to chat with prompt
-        const { data, error } = await supabase
-          .from('conversations')
-          .insert({
-            user_id: user.id,
-            title: title,
-          })
-          .select()
-          .single();
+        toast.info('Generating document with AI...');
+        const { data: docData, error: docError } = await supabase.functions.invoke('generate-document', {
+          body: { 
+            title, 
+            description,
+            type: 'article'
+          }
+        });
 
-        if (error) throw error;
-        navigate(`/chat/${data.id}`);
+        if (docError) throw docError;
+
+        if (docData.success) {
+          // Create conversation with generated document
+          const { data, error } = await supabase
+            .from('conversations')
+            .insert({
+              user_id: user.id,
+              title: title,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          // Save document as first message
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: data.id,
+              role: 'assistant',
+              content: docData.content,
+            });
+
+          toast.success('Document generated!');
+          navigate(`/chat/${data.id}`);
+        }
       } else if (selectedType === 'image') {
-        toast.info('Redirecting to image generation...');
-        navigate('/chat');
+        toast.info('Generating image...');
+        const { data: imgData, error: imgError } = await supabase.functions.invoke('generate-image', {
+          body: { prompt: title }
+        });
+
+        if (imgError) throw imgError;
+
+        if (imgData.image) {
+          // Create conversation with image
+          const { data, error } = await supabase
+            .from('conversations')
+            .insert({
+              user_id: user.id,
+              title: title,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: data.id,
+              role: 'assistant',
+              content: `![Generated Image](${imgData.image})`,
+            });
+
+          toast.success('Image generated!');
+          navigate(`/chat/${data.id}`);
+        }
       } else {
-        toast.info('Redirecting to code assistant...');
-        navigate('/chat');
+        toast.info('Generating code...');
+        const { data: codeData, error: codeError } = await supabase.functions.invoke('generate-code', {
+          body: { 
+            title, 
+            description,
+            language: 'JavaScript'
+          }
+        });
+
+        if (codeError) throw codeError;
+
+        if (codeData.success) {
+          // Create conversation with code
+          const { data, error } = await supabase
+            .from('conversations')
+            .insert({
+              user_id: user.id,
+              title: title,
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+
+          await supabase
+            .from('messages')
+            .insert({
+              conversation_id: data.id,
+              role: 'assistant',
+              content: codeData.code,
+            });
+
+          toast.success('Code generated!');
+          navigate(`/chat/${data.id}`);
+        }
       }
     } catch (error: any) {
       console.error('Error creating:', error);
