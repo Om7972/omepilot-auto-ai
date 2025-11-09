@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
@@ -41,6 +41,7 @@ const AI_MODELS = [
 
 export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const { conversationId } = useParams();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -311,6 +312,31 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     return userColors.get(userId);
   };
 
+  const handleNewChat = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('Please log in to create a conversation');
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .insert({
+        user_id: user.id,
+        title: 'New Conversation',
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast.error('Failed to create conversation');
+      return;
+    }
+
+    navigate(`/chat/${data.id}`);
+    toast.success('New conversation created!');
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Main Header with Sidebar Toggle */}
@@ -421,6 +447,15 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
               />
               
               <div className="flex items-center gap-2">
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={handleNewChat}
+                  className="rounded-lg hover:bg-accent h-8 w-8"
+                  title="New conversation"
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
                 <PersonaSwitcher 
                   selectedPersona={selectedPersona}
                   onPersonaChange={(persona) => {

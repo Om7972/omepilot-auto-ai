@@ -22,12 +22,18 @@ export default function Chat() {
     }
 
     // Check if user has any conversations
-    const { data: conversations } = await supabase
+    const { data: conversations, error: convError } = await supabase
       .from('conversations')
       .select('id')
       .eq('user_id', session.user.id)
       .order('updated_at', { ascending: false })
       .limit(1);
+
+    if (convError) {
+      console.error('Error loading conversations:', convError);
+      setIsLoading(false);
+      return;
+    }
 
     // If no conversations exist, create a default one
     if (!conversations || conversations.length === 0) {
@@ -41,12 +47,12 @@ export default function Chat() {
         .single();
 
       if (!error && newConv) {
-        navigate(`/chat/${newConv.id}`);
+        navigate(`/chat/${newConv.id}`, { replace: true });
         return;
       }
     } else {
       // Redirect to most recent conversation
-      navigate(`/chat/${conversations[0].id}`);
+      navigate(`/chat/${conversations[0].id}`, { replace: true });
       return;
     }
 
