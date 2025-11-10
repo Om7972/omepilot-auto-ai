@@ -424,13 +424,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       {/* Input */}
       <div className="border-t border-border p-4 md:p-6">
         <div className="max-w-4xl mx-auto space-y-4">
-          {/* Greeting Header */}
-          {messages.length === 0 && (
-            <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
-              Nice to see you, {userName}. What's new?
-            </h1>
-          )}
-
           {/* Main Input Area */}
           <div className="relative flex items-end gap-2 bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 p-3 shadow-lg">
             <MessageSquarePlus className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-2" />
@@ -488,66 +481,6 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
               </Button>
             </div>
           </div>
-
-          {/* Quick Actions */}
-          {messages.length === 0 && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickAction('Create something new')}
-                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
-              >
-                Create
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickAction('Help me write a first draft')}
-                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
-              >
-                Write first draft
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickAction('Predict the future trends')}
-                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
-              >
-                Predict the future
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handleQuickAction('Improve my writing')}
-                className="rounded-full bg-card/50 backdrop-blur-sm border-border/50 hover:bg-accent"
-              >
-                Improve writing
-              </Button>
-            </div>
-          )}
-
-          {/* Secondary Quick Actions */}
-          {messages.length === 0 && (
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleQuickAction('Draft a document')}
-                className="rounded-full text-muted-foreground hover:text-foreground"
-              >
-                Draft
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleQuickAction('Improve my communication')}
-                className="rounded-full text-muted-foreground hover:text-foreground"
-              >
-                Improve communication
-              </Button>
-            </div>
-          )}
         </div>
       </div>
     </div>
