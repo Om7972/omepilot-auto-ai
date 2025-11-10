@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, MessageSquare, User, ChevronDown, Globe, Moon, Mic, Info, MessageCircle, Search, BookOpen, Brain, FileText } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger } from "@/components/ui/dropdown-menu";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import omepilotLogo from "@/assets/omepilot-logo.png";
+import { ConversationItem } from "./ConversationItem";
+import { useTheme } from "./ThemeProvider";
 
 interface Conversation {
   id: string;
@@ -25,10 +27,8 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
   const [userName, setUserName] = useState<string>("Om");
-  const [selectedLanguage, setSelectedLanguage] = useState<string>("English");
-  const [selectedTheme, setSelectedTheme] = useState<string>("Night");
-  const [selectedVoice, setSelectedVoice] = useState<string>("Rain");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     loadConversations();
@@ -253,15 +253,13 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
               <div className="mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Today</h4>
                 {groupedConversations.today.map((conv) => (
-                  <Link key={conv.id} to={`/chat/${conv.id}`}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
-                    >
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{conv.title}</span>
-                    </Button>
-                  </Link>
+                  <ConversationItem
+                    key={conv.id}
+                    id={conv.id}
+                    title={conv.title}
+                    onDelete={loadConversations}
+                    onUpdate={loadConversations}
+                  />
                 ))}
               </div>
             )}
@@ -270,15 +268,13 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
               <div className="mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Yesterday</h4>
                 {groupedConversations.yesterday.map((conv) => (
-                  <Link key={conv.id} to={`/chat/${conv.id}`}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
-                    >
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{conv.title}</span>
-                    </Button>
-                  </Link>
+                  <ConversationItem
+                    key={conv.id}
+                    id={conv.id}
+                    title={conv.title}
+                    onDelete={loadConversations}
+                    onUpdate={loadConversations}
+                  />
                 ))}
               </div>
             )}
@@ -287,15 +283,13 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
               <div className="mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Past Week</h4>
                 {groupedConversations.pastWeek.map((conv) => (
-                  <Link key={conv.id} to={`/chat/${conv.id}`}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
-                    >
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{conv.title}</span>
-                    </Button>
-                  </Link>
+                  <ConversationItem
+                    key={conv.id}
+                    id={conv.id}
+                    title={conv.title}
+                    onDelete={loadConversations}
+                    onUpdate={loadConversations}
+                  />
                 ))}
               </div>
             )}
@@ -304,15 +298,13 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
               <div className="mb-3">
                 <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Older</h4>
                 {groupedConversations.older.map((conv) => (
-                  <Link key={conv.id} to={`/chat/${conv.id}`}>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left"
-                    >
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
-                      <span className="truncate">{conv.title}</span>
-                    </Button>
-                  </Link>
+                  <ConversationItem
+                    key={conv.id}
+                    id={conv.id}
+                    title={conv.title}
+                    onDelete={loadConversations}
+                    onUpdate={loadConversations}
+                  />
                 ))}
               </div>
             )}
@@ -347,65 +339,13 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Mic className="h-4 w-4 mr-2" />
-                <span>Voice</span>
-                <span className="ml-auto text-xs text-muted-foreground">{selectedVoice}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => { setSelectedVoice("Rain"); toast.success("Voice set to Rain"); }}>
-                  Rain
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedVoice("Sky"); toast.success("Voice set to Sky"); }}>
-                  Sky
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedVoice("Echo"); toast.success("Voice set to Echo"); }}>
-                  Echo
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Globe className="h-4 w-4 mr-2" />
-                <span>Language</span>
-                <span className="ml-auto text-xs text-muted-foreground">{selectedLanguage}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => { setSelectedLanguage("English"); toast.success("Language set to English"); }}>
-                  English
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedLanguage("Spanish"); toast.success("Language set to Spanish"); }}>
-                  Spanish
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedLanguage("French"); toast.success("Language set to French"); }}>
-                  French
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedLanguage("German"); toast.success("Language set to German"); }}>
-                  German
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
-
-            <DropdownMenuSub>
-              <DropdownMenuSubTrigger>
-                <Moon className="h-4 w-4 mr-2" />
-                <span>Theme</span>
-                <span className="ml-auto text-xs text-muted-foreground">{selectedTheme}</span>
-              </DropdownMenuSubTrigger>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem onClick={() => { setSelectedTheme("Night"); toast.success("Theme set to Night"); }}>
-                  Night
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedTheme("Day"); toast.success("Theme set to Day"); }}>
-                  Day
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setSelectedTheme("Auto"); toast.success("Theme set to Auto"); }}>
-                  Auto
-                </DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuSub>
+            <DropdownMenuItem onClick={() => {
+              setTheme(theme === "dark" ? "light" : "dark");
+              toast.success(`Theme set to ${theme === "dark" ? "Light" : "Dark"}`);
+            }}>
+              {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+              {theme === "dark" ? "Light Mode" : "Dark Mode"}
+            </DropdownMenuItem>
 
             <DropdownMenuSeparator />
             
