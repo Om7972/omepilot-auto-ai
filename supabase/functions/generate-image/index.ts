@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true, imageUrl: imageBase64 }),
+      JSON.stringify({ success: true, image: imageBase64 }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

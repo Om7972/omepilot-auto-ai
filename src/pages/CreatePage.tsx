@@ -71,7 +71,14 @@ export default function CreatePage() {
           }
         });
 
-        if (docError) throw docError;
+        if (docError) {
+          console.error('Document generation error:', docError);
+          throw new Error('Failed to generate document. Please try again.');
+        }
+
+        if (!docData || !docData.success) {
+          throw new Error(docData?.error || 'Failed to generate document');
+        }
 
         if (docData.success) {
           // Create conversation with generated document
@@ -104,7 +111,14 @@ export default function CreatePage() {
           body: { prompt: title }
         });
 
-        if (imgError) throw imgError;
+        if (imgError) {
+          console.error('Image generation error:', imgError);
+          throw new Error('Failed to generate image. Please try again.');
+        }
+
+        if (!imgData || !imgData.success) {
+          throw new Error(imgData?.error || 'Failed to generate image');
+        }
 
         if (imgData.image) {
           // Create conversation with image
@@ -140,7 +154,14 @@ export default function CreatePage() {
           }
         });
 
-        if (codeError) throw codeError;
+        if (codeError) {
+          console.error('Code generation error:', codeError);
+          throw new Error('Failed to generate code. Please try again.');
+        }
+
+        if (!codeData || !codeData.success) {
+          throw new Error(codeData?.error || 'Failed to generate code');
+        }
 
         if (codeData.success) {
           // Create conversation with code
