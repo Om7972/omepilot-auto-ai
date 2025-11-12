@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { AuthError } from '@supabase/supabase-js';
 import omepilotLogo from "@/assets/omepilot-logo.png";
 
 export default function Auth() {
@@ -42,6 +43,18 @@ export default function Auth() {
       return;
     }
 
+    // Basic email validation
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Password strength validation
+    if (password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -50,29 +63,21 @@ export default function Auth() {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            username: username
+          }
         },
       });
 
       if (error) throw error;
 
       if (data.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: data.user.id,
-            username,
-          });
-
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-        }
-
-        toast.success('Account created successfully!');
+        toast.success('Account created successfully! Please check your email for confirmation.');
       }
-    } catch (error: any) {
-      console.error('Sign up error:', error);
-      toast.error(error.message || 'Failed to sign up');
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      console.error('Sign up error:', authError);
+      toast.error(authError.message || 'Failed to sign up. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -86,20 +91,35 @@ export default function Auth() {
       return;
     }
 
+    // Basic email validation
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (error) throw error;
 
-      toast.success('Signed in successfully!');
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      toast.error(error.message || 'Failed to sign in');
+      if (data.session) {
+        toast.success('Signed in successfully!');
+        navigate('/');
+      }
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      console.error('Sign in error:', authError);
+      // Provide more specific error messages
+      if (authError.message.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please check your credentials and try again.');
+      } else {
+        toast.error(authError.message || 'Failed to sign in. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

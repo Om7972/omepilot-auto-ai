@@ -105,25 +105,9 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
     setConversations(conversationsWithTitles);
   };
 
-  const handleNewChat = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({
-        user_id: user.id,
-        title: 'New Conversation',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error('Failed to create conversation');
-      return;
-    }
-
-    navigate(`/chat/${data.id}`);
+  const handleNewChat = () => {
+    navigate('/chat');
+    toast.success('Starting new conversation');
   };
 
   const handleLogout = async () => {

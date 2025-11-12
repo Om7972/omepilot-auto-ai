@@ -119,7 +119,39 @@ All colors MUST be HSL.
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 .animate-gradient {
   background-size: 200% 200%;
   animation: gradient 3s ease infinite;
+}
+
+.bounce-0 {
+  animation: bounce 1s infinite;
+}
+
+.bounce-1 {
+  animation: bounce 1s infinite;
+  animation-delay: 0.15s;
+}
+
+.bounce-2 {
+  animation: bounce 1s infinite;
+  animation-delay: 0.3s;
+}
+
+/* Dynamic user colors for collaborative chat */
+.user-color-text[data-user-color] {
+  color: var(--user-color);
+}
+
+.user-color-bg[data-user-color] {
+  background-color: var(--user-color);
 }

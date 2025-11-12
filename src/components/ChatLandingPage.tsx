@@ -71,7 +71,6 @@ export const ChatLandingPage = ({ userName, onQuickAction }: ChatLandingPageProp
           <Card 
             key={feature.title}
             className="group p-6 hover:bg-gradient-to-br hover:from-primary/5 hover:to-accent/5 transition-all duration-300 hover:shadow-xl hover:scale-105 border-border/50 hover:border-primary/50 cursor-pointer"
-            style={{ animationDelay: `${index * 100}ms` }}
           >
             <div className="space-y-3">
               <div className="p-3 rounded-lg bg-primary/10 w-fit group-hover:bg-primary/20 transition-colors">
@@ -105,7 +104,6 @@ export const ChatLandingPage = ({ userName, onQuickAction }: ChatLandingPageProp
               variant="outline"
               onClick={() => onQuickAction(action.text)}
               className="group hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 hover:shadow-lg hover:scale-105"
-              style={{ animationDelay: `${index * 50}ms` }}
             >
               <action.icon className="w-4 h-4 mr-2 group-hover:rotate-12 transition-transform" />
               {action.text}

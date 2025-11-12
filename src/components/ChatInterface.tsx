@@ -59,9 +59,10 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const typingTimeoutRef = useRef<any>(null);
 
   useEffect(() => {
+    loadUserName();
+    
     if (conversationId) {
       loadMessages();
-      loadUserName();
       loadConversationInfo();
       loadMemberColors();
 
@@ -81,6 +82,9 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       return () => {
         supabase.removeChannel(channel);
       };
+    } else {
+      // Clear messages when on landing page
+      setMessages([]);
     }
   }, [conversationId]);
 
@@ -158,22 +162,31 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
   const loadMessages = async () => {
     if (!conversationId) return;
 
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
+    try {
+      const { data, error } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
 
-    if (error) {
+      if (error) {
+        console.error('Error loading messages:', error);
+        toast.error('Failed to load messages');
+        // Redirect to landing page on error
+        navigate('/chat');
+        return;
+      }
+
+      setMessages(data || []);
+    } catch (error: any) {
       console.error('Error loading messages:', error);
-      return;
+      toast.error('Failed to load conversation');
+      navigate('/chat');
     }
-
-    setMessages(data || []);
   };
 
   const handleSend = async () => {
-    if (!input.trim() || !conversationId || isLoading) return;
+    if (!input.trim() || isLoading) return;
 
     const messageText = input.trim();
     setInput("");
@@ -188,26 +201,81 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error('Please log in to send messages');
+        setInput(messageText); // Restore input
+        setIsLoading(false);
         return;
+      }
+
+      let activeConversationId = conversationId;
+
+      // If no conversation exists, create one
+      if (!conversationId) {
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: session.user.id,
+            title: messageText.length > 50 ? messageText.substring(0, 50) + '...' : messageText,
+          })
+          .select()
+          .single();
+
+        if (convError) {
+          console.error('Error creating conversation:', convError);
+          toast.error('Failed to create conversation');
+          setInput(messageText); // Restore input
+          setIsLoading(false);
+          return;
+        }
+
+        activeConversationId = newConv.id;
+        
+        // Navigate to the new conversation
+        navigate(`/chat/${newConv.id}`);
       }
 
       // Call edge function with selected AI provider
       const { data, error } = await supabase.functions.invoke('chat', {
         body: {
           message: messageText,
-          conversationId,
+          conversationId: activeConversationId,
           provider: selectedPersona,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Edge function error:', error);
+        if (error.message?.includes('500')) {
+          toast.error('AI service configuration error. Please check that API keys are set in Supabase dashboard.', {
+            duration: 5000,
+          });
+        } else {
+          throw error;
+        }
+        setInput(messageText);
+        setIsLoading(false);
+        return;
+      }
 
       if (!data.success) {
         toast.error(data.error || 'Failed to send message');
+        setInput(messageText);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
-      toast.error(error.message || 'Failed to send message');
+      
+      // Provide helpful error messages
+      if (error.message?.includes('500') || error.message?.includes('Edge Function')) {
+        toast.error('Backend configuration error. Please add API keys to Supabase Edge Function secrets.', {
+          duration: 6000,
+          description: 'Check SETUP_BACKEND.md for instructions'
+        });
+      } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
+        toast.error('Network error. Please check your internet connection.');
+      } else {
+        toast.error(error.message || 'Failed to send message');
+      }
+      
+      setInput(messageText); // Restore input on error
     } finally {
       setIsLoading(false);
     }
@@ -312,29 +380,8 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
     return userColors.get(userId);
   };
 
-  const handleNewChat = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast.error('Please log in to create a conversation');
-      return;
-    }
-
-    const { data, error } = await supabase
-      .from('conversations')
-      .insert({
-        user_id: user.id,
-        title: 'New Conversation',
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error('Failed to create conversation');
-      return;
-    }
-
-    navigate(`/chat/${data.id}`);
-    toast.success('New conversation created!');
+  const handleNewChat = () => {
+    navigate('/chat');
   };
 
   return (

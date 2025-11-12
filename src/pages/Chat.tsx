@@ -10,10 +10,10 @@ export default function Chat() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
 
   useEffect(() => {
-    checkAuthAndInitConversation();
+    checkAuth();
   }, []);
 
-  const checkAuthAndInitConversation = async () => {
+  const checkAuth = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     
     if (!session) {
@@ -21,46 +21,19 @@ export default function Chat() {
       return;
     }
 
-    // Check if user has any conversations
-    const { data: conversations, error: convError } = await supabase
-      .from('conversations')
-      .select('id')
-      .eq('user_id', session.user.id)
-      .order('updated_at', { ascending: false })
-      .limit(1);
-
-    if (convError) {
-      console.error('Error loading conversations:', convError);
-      setIsLoading(false);
-      return;
-    }
-
-    // If no conversations exist, create a default one
-    if (!conversations || conversations.length === 0) {
-      const { data: newConv, error } = await supabase
-        .from('conversations')
-        .insert({
-          user_id: session.user.id,
-          title: 'New Conversation',
-        })
-        .select()
-        .single();
-
-      if (!error && newConv) {
-        navigate(`/chat/${newConv.id}`, { replace: true });
-        return;
-      }
-    } else {
-      // Redirect to most recent conversation
-      navigate(`/chat/${conversations[0].id}`, { replace: true });
-      return;
-    }
-
     setIsLoading(false);
   };
 
   if (isLoading) {
-    return null;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="flex gap-2">
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: '0ms' }} />
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: '150ms' }} />
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: '300ms' }} />
+        </div>
+      </div>
+    );
   }
 
   return (
