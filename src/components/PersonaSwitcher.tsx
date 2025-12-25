@@ -24,11 +24,11 @@ const PERSONAS: Persona[] = [
   {
     id: 'gpt-5',
     name: 'Smart (GPT-5)',
-    description: 'Thinks deeply or quickly based on the task',
+    description: 'Thinks deeply with advanced reasoning',
     icon: Sparkles,
   },
   {
-    id: 'quick',
+    id: 'gemini',
     name: 'Quick response',
     description: 'Best for everyday conversation',
     icon: Zap,

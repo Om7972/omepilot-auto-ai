@@ -39,12 +39,13 @@ export const CreatorGallery = () => {
         throw error;
       }
 
-      if (data.success && data.imageUrl) {
-        setImageUrl(data.imageUrl);
+      const generatedImage = data.image || data.imageUrl;
+      if (data.success && generatedImage) {
+        setImageUrl(generatedImage);
         toast.success('Image generated successfully!');
       } else {
         console.error('Generation failed:', data);
-        toast.error(data.error || 'Failed to generate image. Please check the logs.');
+        toast.error(data.error || 'Failed to generate image. Please try again.');
       }
     } catch (error: any) {
       console.error('Image generation error:', error);

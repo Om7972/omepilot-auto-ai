@@ -38,7 +38,7 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar isOpen={isSidebarOpen} />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 overflow-hidden">
         <ChatInterface onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
       </div>

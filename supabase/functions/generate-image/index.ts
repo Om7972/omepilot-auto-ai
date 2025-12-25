@@ -1,11 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -15,58 +14,31 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json();
     
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    const HUGGING_FACE_ACCESS_TOKEN = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+    
+    if (!HUGGING_FACE_ACCESS_TOKEN) {
+      console.error('HUGGING_FACE_ACCESS_TOKEN is not configured');
+      throw new Error('Image generation service not configured');
     }
     
-    console.log('Generating image with Lovable AI for prompt:', prompt);
+    console.log('Generating image with Hugging Face for prompt:', prompt);
 
-    // Generate image using Lovable AI Gateway
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: prompt
-          }
-        ],
-        modalities: ['image', 'text']
-      }),
+    const hf = new HfInference(HUGGING_FACE_ACCESS_TOKEN);
+
+    const image = await hf.textToImage({
+      inputs: prompt,
+      model: 'black-forest-labs/FLUX.1-schnell',
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
-      
-      if (response.status === 429) {
-        throw new Error('Rate limit exceeded. Please try again later.');
-      }
-      if (response.status === 402) {
-        throw new Error('Payment required. Please add funds to your Lovable AI workspace.');
-      }
-      
-      throw new Error('Failed to generate image');
-    }
+    // Convert the blob to a base64 string
+    const arrayBuffer = await image.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    const imageUrl = `data:image/png;base64,${base64}`;
 
-    const result = await response.json();
-    console.log('Lovable AI response received');
-
-    // Extract base64 image from response
-    const imageBase64 = result.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-    
-    if (!imageBase64) {
-      console.error('No image in response:', JSON.stringify(result));
-      throw new Error('No image URL in response');
-    }
+    console.log('Image generated successfully');
 
     return new Response(
-      JSON.stringify({ success: true, image: imageBase64 }),
+      JSON.stringify({ success: true, image: imageUrl, imageUrl: imageUrl }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
@@ -74,7 +46,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Failed to generate image' 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

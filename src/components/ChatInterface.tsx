@@ -265,12 +265,11 @@ export const ChatInterface = ({ onToggleSidebar }: ChatInterfaceProps) => {
       
       // Provide helpful error messages
       if (error.message?.includes('500') || error.message?.includes('Edge Function')) {
-        toast.error('Backend configuration error. Please add API keys to Supabase Edge Function secrets.', {
-          duration: 6000,
-          description: 'Check SETUP_BACKEND.md for instructions'
-        });
+        toast.error('AI service temporarily unavailable. Please try again.');
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
         toast.error('Network error. Please check your internet connection.');
+      } else if (error.message?.includes('Rate limit')) {
+        toast.error('Rate limit exceeded. Please try again in a moment.');
       } else {
         toast.error(error.message || 'Failed to send message');
       }
