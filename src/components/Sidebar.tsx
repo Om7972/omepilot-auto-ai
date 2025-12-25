@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftClose } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -19,9 +19,10 @@ interface Conversation {
 
 interface SidebarProps {
   isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar = ({ isOpen = true }: SidebarProps) => {
+export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -149,14 +150,28 @@ export const Sidebar = ({ isOpen = true }: SidebarProps) => {
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
         <img src={omepilotLogo} alt="Omepilot" className="w-8 h-8" />
         <span className="text-lg font-semibold text-sidebar-foreground">Omepilot</span>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleNewChat}
-          className="ml-auto hover:bg-sidebar-accent"
-        >
-          <Plus className="h-5 w-5" />
-        </Button>
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={handleNewChat}
+            className="hover:bg-sidebar-accent h-8 w-8"
+            title="New chat"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
+          {onClose && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={onClose}
+              className="hover:bg-sidebar-accent h-8 w-8"
+              title="Close sidebar"
+            >
+              <PanelLeftClose className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Search Box */}
