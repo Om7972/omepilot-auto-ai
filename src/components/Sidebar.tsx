@@ -145,7 +145,7 @@ export const Sidebar = ({ isOpen = true, onClose }: SidebarProps) => {
   const groupedConversations = groupConversationsByDate();
 
   return (
-    <div className={`flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ${!isOpen ? 'hidden md:flex' : 'flex'}`}>
+    <div className={`flex h-screen w-64 flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 fixed md:relative z-40 ${isOpen ? 'left-0' : '-left-64'}`}>
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
         <img src={omepilotLogo} alt="Omepilot" className="w-8 h-8" />

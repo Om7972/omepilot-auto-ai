@@ -208,11 +208,10 @@ export const MemoryManager = () => {
     try {
       const memoryContext = memories.map(m => `${m.key}: ${m.value}`).join('\n');
       
-      const { data, error } = await supabase.functions.invoke('chat', {
+      const { data, error } = await supabase.functions.invoke('ai-suggest', {
         body: { 
-          message: `Based on these existing memories, suggest 3 useful additional memories that would be helpful to remember:\n${memoryContext}\n\nRespond with JSON array: [{"key": "...", "value": "...", "category": "..."}]`,
-          conversationId: 'memory-suggestions',
-          provider: 'gemini'
+          prompt: `Based on these existing memories, suggest 3 useful additional memories that would be helpful to remember:\n${memoryContext}`,
+          type: 'memory-suggestions'
         }
       });
 
@@ -220,12 +219,14 @@ export const MemoryManager = () => {
 
       if (data.success) {
         try {
-          const suggestions = JSON.parse(data.response.replace(/```json\n?/g, '').replace(/```\n?/g, ''));
+          const suggestions = JSON.parse(data.response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim());
           setAiSuggestions(Array.isArray(suggestions) ? suggestions : []);
           toast.success('AI suggestions generated!');
         } catch {
           toast.error('Failed to parse suggestions');
         }
+      } else {
+        throw new Error(data.error || 'Failed to generate suggestions');
       }
     } catch (error) {
       console.error('AI suggestion error:', error);

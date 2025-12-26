@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { HfInference } from 'https://esm.sh/@huggingface/inference@2.3.2';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,31 +13,55 @@ serve(async (req) => {
   try {
     const { prompt } = await req.json();
     
-    const HUGGING_FACE_ACCESS_TOKEN = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     
-    if (!HUGGING_FACE_ACCESS_TOKEN) {
-      console.error('HUGGING_FACE_ACCESS_TOKEN is not configured');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY is not configured');
       throw new Error('Image generation service not configured');
     }
     
-    console.log('Generating image with Hugging Face for prompt:', prompt);
+    console.log('Generating image with Lovable AI for prompt:', prompt);
 
-    const hf = new HfInference(HUGGING_FACE_ACCESS_TOKEN);
-
-    const image = await hf.textToImage({
-      inputs: prompt,
-      model: 'black-forest-labs/FLUX.1-schnell',
+    // Use Lovable AI gateway with Gemini image generation model
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-image-preview',
+        messages: [
+          {
+            role: 'user',
+            content: `Generate a high-quality, detailed image: ${prompt}. Make it visually stunning and creative.`
+          }
+        ],
+        modalities: ['image', 'text']
+      }),
     });
 
-    // Convert the blob to a base64 string
-    const arrayBuffer = await image.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-    const imageUrl = `data:image/png;base64,${base64}`;
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI API error:', response.status, errorText);
+      throw new Error(`Failed to generate image: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('API response received');
+
+    // Extract the image from the response
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!imageData) {
+      console.error('No image data in response:', JSON.stringify(data));
+      throw new Error('No image generated');
+    }
 
     console.log('Image generated successfully');
 
     return new Response(
-      JSON.stringify({ success: true, image: imageUrl, imageUrl: imageUrl }),
+      JSON.stringify({ success: true, image: imageData, imageUrl: imageData }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {

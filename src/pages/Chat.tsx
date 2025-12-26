@@ -38,9 +38,19 @@ export default function Chat() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* Overlay for mobile when sidebar is open */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-30 md:hidden" 
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
       <div className="flex-1 overflow-hidden">
-        <ChatInterface onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <ChatInterface 
+          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
+          isSidebarOpen={isSidebarOpen}
+        />
       </div>
     </div>
   );
