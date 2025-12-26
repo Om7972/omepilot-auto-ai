@@ -125,20 +125,30 @@ export const ConversationItem = ({ id, title, onDelete, onUpdate }: Conversation
             <span className="truncate flex-1">{title}</span>
           </Button>
         </Link>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
+        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setIsEditing(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
             className="h-7 w-7 hover:bg-sidebar-accent"
+            title="Edit conversation title"
           >
             <Edit2 className="h-3.5 w-3.5" />
           </Button>
           <Button
             size="icon"
             variant="ghost"
-            onClick={() => setShowDeleteDialog(true)}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowDeleteDialog(true);
+            }}
             className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground"
+            title="Delete conversation"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </Button>

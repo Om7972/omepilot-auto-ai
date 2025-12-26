@@ -14,3 +14,6 @@ verify_jwt = true
 
 [functions.generate-code]
 verify_jwt = true
+
+[functions.ai-suggest]
+verify_jwt = true
