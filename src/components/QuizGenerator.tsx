@@ -9,13 +9,28 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, BookOpen, Check, X } from "lucide-react";
 import { toast } from "sonner";
 
+interface QuizQuestion {
+  id: string;
+  question: string;
+  options: string[];
+  order_index: number;
+}
+
+interface QuizResult {
+  is_correct: boolean;
+  correct_answer: string;
+  explanation: string;
+}
+
 export const QuizGenerator = () => {
   const [content, setContent] = useState("");
   const [title, setTitle] = useState("");
   const [numQuestions, setNumQuestions] = useState(5);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [quiz, setQuiz] = useState<any>(null);
   const [answers, setAnswers] = useState<{ [key: number]: string }>({});
+  const [results, setResults] = useState<{ [key: number]: QuizResult }>({});
   const [showResults, setShowResults] = useState(false);
 
   const generateQuiz = async () => {
@@ -33,6 +48,9 @@ export const QuizGenerator = () => {
       if (error) throw error;
 
       setQuiz(data);
+      setAnswers({});
+      setResults({});
+      setShowResults(false);
       toast.success('Quiz generated successfully!');
     } catch (error: any) {
       console.error('Error:', error);
@@ -42,20 +60,46 @@ export const QuizGenerator = () => {
     }
   };
 
-  const submitQuiz = () => {
-    let score = 0;
-    quiz.questions.forEach((q: any, index: number) => {
-      if (answers[index] === q.correct_answer) {
-        score++;
-      }
-    });
+  const submitQuiz = async () => {
+    setIsSubmitting(true);
+    
+    try {
+      const questionResults: { [key: number]: QuizResult } = {};
+      let score = 0;
 
-    setShowResults(true);
-    toast.success(`You scored ${score}/${quiz.questions.length}!`);
+      // Check each answer using the secure function
+      for (let index = 0; index < quiz.questions.length; index++) {
+        const question = quiz.questions[index] as QuizQuestion;
+        const userAnswer = answers[index] || '';
+        
+        const { data, error } = await supabase.rpc('check_quiz_answer', {
+          _question_id: question.id,
+          _user_answer: userAnswer
+        });
+
+        if (error) {
+          console.error('Error checking answer:', error);
+          continue;
+        }
+
+        const result = data as unknown as QuizResult;
+        questionResults[index] = result;
+        if (result.is_correct) score++;
+      }
+
+      setResults(questionResults);
+      setShowResults(true);
+      toast.success(`You scored ${score}/${quiz.questions.length}!`);
+    } catch (error: any) {
+      console.error('Error submitting quiz:', error);
+      toast.error('Failed to submit quiz');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-4xl mx-auto space-y-6">
       <Card className="bg-card border-border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -127,13 +171,13 @@ export const QuizGenerator = () => {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {quiz.questions.map((question: any, index: number) => (
+            {quiz.questions.map((question: QuizQuestion, index: number) => (
               <div key={index} className="space-y-3">
                 <div className="flex items-start gap-2">
                   <span className="font-semibold text-primary">{index + 1}.</span>
                   <p className="font-medium flex-1">{question.question}</p>
-                  {showResults && (
-                    answers[index] === question.correct_answer ? (
+                  {showResults && results[index] && (
+                    results[index].is_correct ? (
                       <Check className="h-5 w-5 text-green-500" />
                     ) : (
                       <X className="h-5 w-5 text-red-500" />
@@ -152,9 +196,9 @@ export const QuizGenerator = () => {
                       <Label
                         htmlFor={`q${index}-${optIndex}`}
                         className={`flex-1 cursor-pointer ${
-                          showResults && option === question.correct_answer
+                          showResults && results[index]?.correct_answer === option
                             ? 'text-green-600 font-medium'
-                            : showResults && answers[index] === option
+                            : showResults && answers[index] === option && !results[index]?.is_correct
                             ? 'text-red-600'
                             : ''
                         }`}
@@ -165,18 +209,29 @@ export const QuizGenerator = () => {
                   ))}
                 </RadioGroup>
 
-                {showResults && (
+                {showResults && results[index]?.explanation && (
                   <div className="bg-muted/50 p-3 rounded-lg text-sm">
                     <p className="font-medium text-primary mb-1">Explanation:</p>
-                    <p className="text-muted-foreground">{question.explanation}</p>
+                    <p className="text-muted-foreground">{results[index].explanation}</p>
                   </div>
                 )}
               </div>
             ))}
 
             {!showResults && (
-              <Button onClick={submitQuiz} className="w-full">
-                Submit Quiz
+              <Button 
+                onClick={submitQuiz} 
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Checking Answers...
+                  </>
+                ) : (
+                  'Submit Quiz'
+                )}
               </Button>
             )}
 
@@ -185,6 +240,7 @@ export const QuizGenerator = () => {
                 onClick={() => {
                   setQuiz(null);
                   setAnswers({});
+                  setResults({});
                   setShowResults(false);
                 }}
                 variant="outline"

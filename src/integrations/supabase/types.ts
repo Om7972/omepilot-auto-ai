@@ -245,6 +245,35 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_answers: {
+        Row: {
+          correct_answer: string
+          explanation: string | null
+          id: string
+          question_id: string
+        }
+        Insert: {
+          correct_answer: string
+          explanation?: string | null
+          id?: string
+          question_id: string
+        }
+        Update: {
+          correct_answer?: string
+          explanation?: string | null
+          id?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_attempts: {
         Row: {
           answers: Json
@@ -285,8 +314,6 @@ export type Database = {
       }
       quiz_questions: {
         Row: {
-          correct_answer: string
-          explanation: string | null
           id: string
           options: Json
           order_index: number
@@ -294,8 +321,6 @@ export type Database = {
           quiz_id: string
         }
         Insert: {
-          correct_answer: string
-          explanation?: string | null
           id?: string
           options: Json
           order_index: number
@@ -303,8 +328,6 @@ export type Database = {
           quiz_id: string
         }
         Update: {
-          correct_answer?: string
-          explanation?: string | null
           id?: string
           options?: Json
           order_index?: number
@@ -391,6 +414,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_quiz_answer: {
+        Args: { _question_id: string; _user_answer: string }
+        Returns: Json
+      }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean

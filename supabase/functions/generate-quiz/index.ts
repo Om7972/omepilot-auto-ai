@@ -75,24 +75,42 @@ serve(async (req) => {
 
     if (quizError) throw quizError;
 
-    // Insert questions
+    // Insert questions (without correct_answer and explanation - those go to quiz_answers)
     const questionsToInsert = questions.map((q: any, index: number) => ({
       quiz_id: quiz.id,
       question: q.question,
       options: q.options,
-      correct_answer: q.correct_answer,
-      explanation: q.explanation,
       order_index: index
     }));
 
-    const { error: questionsError } = await supabaseClient
+    const { data: insertedQuestions, error: questionsError } = await supabaseClient
       .from('quiz_questions')
-      .insert(questionsToInsert);
+      .insert(questionsToInsert)
+      .select();
 
     if (questionsError) throw questionsError;
 
+    // Insert answers into the protected quiz_answers table
+    const answersToInsert = insertedQuestions.map((insertedQ: any, index: number) => ({
+      question_id: insertedQ.id,
+      correct_answer: questions[index].correct_answer,
+      explanation: questions[index].explanation
+    }));
+
+    const { error: answersError } = await supabaseClient
+      .from('quiz_answers')
+      .insert(answersToInsert);
+
+    if (answersError) throw answersError;
+
+    // Return questions with their IDs for the frontend
+    const questionsWithIds = insertedQuestions.map((q: any, index: number) => ({
+      ...q,
+      options: questions[index].options
+    }));
+
     return new Response(
-      JSON.stringify({ success: true, quiz, questions }),
+      JSON.stringify({ success: true, quiz, questions: questionsWithIds }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

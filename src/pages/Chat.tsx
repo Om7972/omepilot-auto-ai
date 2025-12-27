@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 export default function Chat() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -37,19 +37,15 @@ export default function Chat() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Overlay for mobile when sidebar is open */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-30 md:hidden" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="flex h-screen w-full overflow-hidden">
+      <Sidebar 
+        isCollapsed={isSidebarCollapsed} 
+        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+      />
       <div className="flex-1 overflow-hidden">
         <ChatInterface 
-          onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} 
-          isSidebarOpen={isSidebarOpen}
+          onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
+          isSidebarCollapsed={isSidebarCollapsed}
         />
       </div>
     </div>
