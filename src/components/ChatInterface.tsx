@@ -30,7 +30,7 @@ interface UserColor {
 
 interface ChatInterfaceProps {
   onToggleSidebar?: () => void;
-  isSidebarOpen?: boolean;
+  isSidebarCollapsed?: boolean;
 }
 
 const AI_MODELS = [
@@ -40,7 +40,7 @@ const AI_MODELS = [
   { id: 'anthropic', name: 'Think Deeper', icon: Brain, description: 'Better for complex topics' },
 ];
 
-export const ChatInterface = ({ onToggleSidebar, isSidebarOpen = true }: ChatInterfaceProps) => {
+export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: ChatInterfaceProps) => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -397,7 +397,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarOpen = true }: ChatInt
               className="rounded-lg hover:bg-muted"
               title="Toggle sidebar"
             >
-              <PanelLeft className={`h-5 w-5 transition-transform ${isSidebarOpen ? '' : 'rotate-180'}`} />
+              <PanelLeft className={`h-5 w-5 transition-transform ${isSidebarCollapsed ? 'rotate-180' : ''}`} />
             </Button>
           )}
           <h2 className="text-lg font-semibold">Omepilot</h2>
