@@ -11,6 +11,8 @@ import omepilotLogo from "@/assets/omepilot-logo.png";
 import { ConversationItem } from "./ConversationItem";
 import { useTheme } from "./ThemeProvider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AboutDialog } from "./AboutDialog";
+import { FeedbackDialog } from "./FeedbackDialog";
 
 interface Conversation {
   id: string;
@@ -31,6 +33,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const [userName, setUserName] = useState<string>("Om");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { theme, setTheme } = useTheme();
+  const [showAboutDialog, setShowAboutDialog] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -389,11 +393,11 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
                 <DropdownMenuSeparator />
                 
-                <DropdownMenuItem onClick={() => toast.info("About Omepilot: Your AI-powered assistant")}>
+                <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
                   <Info className="h-4 w-4 mr-2" />
                   About
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success("Feedback form opened")}>
+                <DropdownMenuItem onClick={() => setShowFeedbackDialog(true)}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Give feedback
                 </DropdownMenuItem>
@@ -441,11 +445,11 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
                 <DropdownMenuSeparator />
                 
-                <DropdownMenuItem onClick={() => toast.info("About Omepilot: Your AI-powered assistant")}>
+                <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
                   <Info className="h-4 w-4 mr-2" />
                   About
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => toast.success("Feedback form opened")}>
+                <DropdownMenuItem onClick={() => setShowFeedbackDialog(true)}>
                   <MessageCircle className="h-4 w-4 mr-2" />
                   Give feedback
                 </DropdownMenuItem>
@@ -460,6 +464,9 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
           )}
         </div>
       </div>
+      
+      <AboutDialog open={showAboutDialog} onOpenChange={setShowAboutDialog} />
+      <FeedbackDialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog} />
     </TooltipProvider>
   );
 };
