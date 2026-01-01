@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, Settings, Sparkles } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -30,7 +30,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const location = useLocation();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [userEmail, setUserEmail] = useState<string>("");
-  const [userName, setUserName] = useState<string>("Om");
+  const [userName, setUserName] = useState<string>("User");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { theme, setTheme } = useTheme();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
@@ -40,7 +40,6 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     loadConversations();
     loadUserInfo();
 
-    // Subscribe to conversation changes
     const channel = supabase
       .channel('conversations')
       .on('postgres_changes', {
@@ -84,7 +83,6 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       return;
     }
 
-    // Get first message for each conversation to use as title
     const conversationsWithTitles = await Promise.all(
       (convData || []).map(async (conv) => {
         const { data: messages } = await supabase
@@ -99,8 +97,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
           const firstMessage = messages[0].content;
           return {
             ...conv,
-            title: firstMessage.length > 30 
-              ? firstMessage.substring(0, 30) + '...' 
+            title: firstMessage.length > 35 
+              ? firstMessage.substring(0, 35) + '...' 
               : firstMessage
           };
         }
@@ -112,7 +110,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   };
 
   const handleNewChat = () => {
-    navigate('/chat');
+    navigate('/');
     toast.success('Starting new conversation');
   };
 
@@ -151,102 +149,150 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   const navItems = [
     { path: '/discover', icon: Compass, label: 'Discover' },
-    { path: '/creator-gallery', icon: Palette, label: 'Creator Gallery', badge: 'New' },
-    { path: '/quiz', icon: BookOpen, label: 'Quiz Generator' },
-    { path: '/search', icon: Globe, label: 'Web Search' },
-    { path: '/memory', icon: Brain, label: 'AI Memory' },
-    { path: '/create-page', icon: FileText, label: 'Create Page' },
+    { path: '/creator-gallery', icon: Palette, label: 'Creator Studio' },
+    { path: '/quiz', icon: BookOpen, label: 'Quiz' },
+    { path: '/search', icon: Globe, label: 'Search' },
+    { path: '/memory', icon: Brain, label: 'Memory' },
+    { path: '/create-page', icon: FileText, label: 'Create' },
   ];
+
+  const ConversationGroup = ({ title, conversations }: { title: string; conversations: Conversation[] }) => {
+    if (conversations.length === 0) return null;
+    return (
+      <div className="mb-2">
+        <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">{title}</p>
+        {conversations.map((conv) => (
+          <ConversationItem
+            key={conv.id}
+            id={conv.id}
+            title={conv.title}
+            onDelete={loadConversations}
+            onUpdate={loadConversations}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className={`flex h-screen flex-col bg-sidebar border-r border-sidebar-border transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
-        {/* Header */}
-        <div className={`flex items-center gap-3 p-3 border-b border-sidebar-border ${isCollapsed ? 'justify-center' : ''}`}>
-          <img src={omepilotLogo} alt="Omepilot" className="w-8 h-8 flex-shrink-0" />
-          {!isCollapsed && (
-            <span className="text-lg font-semibold text-sidebar-foreground">Omepilot</span>
-          )}
-          <div className={`flex items-center gap-1 ${isCollapsed ? '' : 'ml-auto'}`}>
+      <div 
+        className={`flex h-screen flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 ease-out ${
+          isCollapsed ? 'w-[60px]' : 'w-[260px]'
+        }`}
+      >
+        {/* Logo Header */}
+        <div className={`flex items-center h-14 border-b border-sidebar-border/50 ${isCollapsed ? 'justify-center px-2' : 'px-4'}`}>
+          <div className={`flex items-center gap-2.5 ${isCollapsed ? '' : 'flex-1'}`}>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-lg blur-sm" />
+              <img src={omepilotLogo} alt="Omepilot" className="relative w-8 h-8 rounded-lg shadow-lg" />
+            </div>
             {!isCollapsed && (
+              <div className="flex flex-col">
+                <span className="text-base font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Omepilot</span>
+                <span className="text-[10px] text-muted-foreground -mt-0.5">AI Assistant</span>
+              </div>
+            )}
+          </div>
+          {!isCollapsed && (
+            <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={handleNewChat}
-                    className="hover:bg-sidebar-accent h-8 w-8"
+                    className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary"
                   >
-                    <Plus className="h-5 w-5" />
+                    <Plus className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">New chat</TooltipContent>
               </Tooltip>
-            )}
-          </div>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onToggle}
+                    className="h-8 w-8 rounded-lg hover:bg-muted"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Collapse sidebar</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </div>
 
-        {/* Toggle Button Row */}
-        <div className={`flex items-center gap-2 p-2 border-b border-sidebar-border ${isCollapsed ? 'justify-center' : 'justify-end px-3'}`}>
-          {isCollapsed && (
+        {/* Collapsed Toggle */}
+        {isCollapsed && (
+          <div className="flex flex-col items-center gap-2 py-3 border-b border-sidebar-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
                   variant="ghost"
                   onClick={handleNewChat}
-                  className="hover:bg-sidebar-accent h-9 w-9"
+                  className="h-9 w-9 rounded-lg hover:bg-primary/10 hover:text-primary"
                 >
                   <Plus className="h-5 w-5" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="right">New chat</TooltipContent>
             </Tooltip>
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={onToggle}
-                className="hover:bg-sidebar-accent h-9 w-9"
-              >
-                {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right">{isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}</TooltipContent>
-          </Tooltip>
-        </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={onToggle}
+                  className="h-9 w-9 rounded-lg hover:bg-muted"
+                >
+                  <PanelLeftOpen className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right">Expand sidebar</TooltipContent>
+            </Tooltip>
+          </div>
+        )}
 
-        {/* Search Box - only when expanded */}
+        {/* Search */}
         {!isCollapsed && (
-          <div className="p-3 border-b border-sidebar-border">
+          <div className="px-3 py-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
               <Input
                 type="text"
-                placeholder="Search conversations..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-background border-input focus-visible:ring-1 h-9"
+                className="h-8 pl-8 text-sm bg-muted/50 border-0 focus-visible:ring-1 focus-visible:ring-primary/30 rounded-lg"
               />
             </div>
           </div>
         )}
 
         {/* Navigation */}
-        <div className={`flex flex-col gap-1 p-2 border-b border-sidebar-border ${isCollapsed ? 'items-center' : 'p-3'}`}>
-          {navItems.map((item) => (
-            isCollapsed ? (
+        <div className={`flex flex-col gap-0.5 py-2 ${isCollapsed ? 'items-center px-2' : 'px-2'}`}>
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return isCollapsed ? (
               <Tooltip key={item.path}>
                 <TooltipTrigger asChild>
                   <Button
-                    variant={location.pathname === item.path ? 'default' : 'ghost'}
+                    variant="ghost"
                     size="icon"
                     onClick={() => navigate(item.path)}
-                    className="h-10 w-10 hover:bg-sidebar-accent"
+                    className={`h-9 w-9 rounded-lg transition-colors ${
+                      isActive 
+                        ? 'bg-primary/15 text-primary' 
+                        : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                    }`}
                   >
-                    <item.icon className="h-5 w-5" />
+                    <item.icon className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">{item.label}</TooltipContent>
@@ -254,214 +300,125 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
             ) : (
               <Button
                 key={item.path}
-                variant={location.pathname === item.path ? 'default' : 'ghost'}
+                variant="ghost"
                 onClick={() => navigate(item.path)}
-                className="justify-start gap-3 hover:bg-sidebar-accent"
+                className={`h-8 justify-start gap-2.5 px-2.5 rounded-lg text-sm font-normal transition-colors ${
+                  isActive 
+                    ? 'bg-primary/15 text-primary' 
+                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                }`}
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-                {item.badge && (
-                  <span className="ml-auto text-xs bg-primary px-2 py-0.5 rounded-md">{item.badge}</span>
-                )}
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+                <span className="truncate">{item.label}</span>
               </Button>
-            )
-          ))}
+            );
+          })}
         </div>
 
-        {/* Conversations */}
+        {/* Conversations - takes remaining space */}
         {!isCollapsed && (
-          <div className="flex-1 flex flex-col min-h-0">
-            <div className="px-4 py-3">
-              <h3 className="text-sm font-semibold text-sidebar-foreground">Conversations</h3>
+          <div className="flex-1 flex flex-col min-h-0 border-t border-sidebar-border/50">
+            <div className="flex items-center justify-between px-3 py-2">
+              <p className="text-xs font-medium text-muted-foreground">Conversations</p>
+              <span className="text-[10px] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">
+                {conversations.length}
+              </span>
             </div>
-            <ScrollArea className="flex-1 px-3">
-              <div className="flex flex-col gap-1 pb-4">
-                {groupedConversations.today.length > 0 && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Today</h4>
-                    {groupedConversations.today.map((conv) => (
-                      <ConversationItem
-                        key={conv.id}
-                        id={conv.id}
-                        title={conv.title}
-                        onDelete={loadConversations}
-                        onUpdate={loadConversations}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {groupedConversations.yesterday.length > 0 && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Yesterday</h4>
-                    {groupedConversations.yesterday.map((conv) => (
-                      <ConversationItem
-                        key={conv.id}
-                        id={conv.id}
-                        title={conv.title}
-                        onDelete={loadConversations}
-                        onUpdate={loadConversations}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {groupedConversations.pastWeek.length > 0 && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Past Week</h4>
-                    {groupedConversations.pastWeek.map((conv) => (
-                      <ConversationItem
-                        key={conv.id}
-                        id={conv.id}
-                        title={conv.title}
-                        onDelete={loadConversations}
-                        onUpdate={loadConversations}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {groupedConversations.older.length > 0 && (
-                  <div className="mb-3">
-                    <h4 className="text-xs font-semibold text-muted-foreground px-2 py-2">Older</h4>
-                    {groupedConversations.older.map((conv) => (
-                      <ConversationItem
-                        key={conv.id}
-                        id={conv.id}
-                        title={conv.title}
-                        onDelete={loadConversations}
-                        onUpdate={loadConversations}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+            <ScrollArea className="flex-1 px-2">
+              <ConversationGroup title="Today" conversations={groupedConversations.today} />
+              <ConversationGroup title="Yesterday" conversations={groupedConversations.yesterday} />
+              <ConversationGroup title="Past Week" conversations={groupedConversations.pastWeek} />
+              <ConversationGroup title="Older" conversations={groupedConversations.older} />
+              <div className="h-4" />
             </ScrollArea>
           </div>
         )}
 
-        {/* Collapsed Conversations Icon */}
+        {/* Collapsed conversations */}
         {isCollapsed && (
-          <div className="flex-1 flex flex-col items-center pt-2">
+          <div className="flex-1 flex flex-col items-center py-2 border-t border-sidebar-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={onToggle}
-                  className="h-10 w-10 hover:bg-sidebar-accent"
+                  className="h-9 w-9 rounded-lg hover:bg-muted"
                 >
-                  <MessageCircle className="h-5 w-5" />
+                  <MessageCircle className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right">View conversations</TooltipContent>
+              <TooltipContent side="right">Conversations ({conversations.length})</TooltipContent>
             </Tooltip>
           </div>
         )}
 
         {/* User Profile */}
-        <div className={`p-2 border-t border-sidebar-border ${isCollapsed ? 'flex justify-center' : 'p-3'}`}>
-          {isCollapsed ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+        <div className={`border-t border-sidebar-border/50 ${isCollapsed ? 'p-2 flex justify-center' : 'p-2'}`}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              {isCollapsed ? (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-10 w-10 hover:bg-sidebar-accent"
+                  className="h-9 w-9 rounded-lg hover:bg-muted"
                 >
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground text-xs font-semibold shadow-sm">
                     {userName.charAt(0).toUpperCase()}
                   </div>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" side="right" className="w-64 bg-card border-border">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col gap-1">
-                    <div className="font-semibold">{userName}</div>
-                    <div className="text-xs font-normal text-muted-foreground">{userEmail}</div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={() => {
-                  setTheme(theme === "dark" ? "light" : "dark");
-                  toast.success(`Theme set to ${theme === "dark" ? "Light" : "Dark"}`);
-                }}>
-                  {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
-                  <Info className="h-4 w-4 mr-2" />
-                  About
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowFeedbackDialog(true)}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Give feedback
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+              ) : (
                 <Button
                   variant="ghost"
-                  className="w-full justify-start gap-3 hover:bg-sidebar-accent"
+                  className="w-full h-10 justify-start gap-2.5 px-2 rounded-lg hover:bg-muted"
                 >
-                  <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
+                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-primary-foreground text-xs font-semibold shadow-sm flex-shrink-0">
                     {userName.charAt(0).toUpperCase()}
                   </div>
-                  <div className="flex-1 text-left overflow-hidden">
-                    <div className="font-medium truncate">{userName}</div>
-                    <div className="text-xs text-muted-foreground truncate">{userEmail}</div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <p className="text-sm font-medium truncate">{userName}</p>
+                    <p className="text-[10px] text-muted-foreground truncate -mt-0.5">{userEmail}</p>
                   </div>
-                  <ChevronDown className="h-4 w-4 ml-auto" />
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 bg-card border-border">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col gap-1">
-                    <div className="font-semibold">{userName}</div>
-                    <div className="text-xs font-normal text-muted-foreground">{userEmail}</div>
-                  </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={() => {
-                  setTheme(theme === "dark" ? "light" : "dark");
-                  toast.success(`Theme set to ${theme === "dark" ? "Light" : "Dark"}`);
-                }}>
-                  {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
-                  {theme === "dark" ? "Light Mode" : "Dark Mode"}
-                </DropdownMenuItem>
-
-                <DropdownMenuSeparator />
-                
-                <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
-                  <Info className="h-4 w-4 mr-2" />
-                  About
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowFeedbackDialog(true)}>
-                  <MessageCircle className="h-4 w-4 mr-2" />
-                  Give feedback
-                </DropdownMenuItem>
-                
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Logout
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+              )}
+            </DropdownMenuTrigger>
+            <DropdownMenuContent 
+              align={isCollapsed ? "center" : "end"} 
+              side={isCollapsed ? "right" : "top"}
+              className="w-56"
+            >
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col">
+                  <p className="text-sm font-medium">{userName}</p>
+                  <p className="text-xs text-muted-foreground">{userEmail}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+                {theme === "dark" ? <Sun className="h-4 w-4 mr-2" /> : <Moon className="h-4 w-4 mr-2" />}
+                {theme === "dark" ? "Light Mode" : "Dark Mode"}
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
+              <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
+                <Info className="h-4 w-4 mr-2" />
+                About
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowFeedbackDialog(true)}>
+                <MessageCircle className="h-4 w-4 mr-2" />
+                Give Feedback
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
       

@@ -46,7 +46,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userName, setUserName] = useState("Om");
+  const [userName, setUserName] = useState("User");
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<string>('gemini');
@@ -58,6 +58,10 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const recognitionRef = useRef<any>(null);
   const typingChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
+
+  const handleCollaborativeChange = (enabled: boolean) => {
+    setIsCollaborative(enabled);
+  };
 
   useEffect(() => {
     loadUserName();
@@ -402,8 +406,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           )}
           <h2 className="text-lg font-semibold">Omepilot</h2>
         </div>
-        {isCollaborative && conversationId && (
-          <CollaborativeSession conversationId={conversationId} isCollaborative={isCollaborative} />
+        {conversationId && (
+          <CollaborativeSession 
+            conversationId={conversationId} 
+            isCollaborative={isCollaborative}
+            onCollaborativeChange={handleCollaborativeChange}
+          />
         )}
       </div>
 

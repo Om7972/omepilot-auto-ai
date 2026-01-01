@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageSquare, Trash2, Edit2, Check, X } from "lucide-react";
@@ -24,6 +24,7 @@ interface ConversationItemProps {
 }
 
 export const ConversationItem = ({ id, title, onDelete, onUpdate }: ConversationItemProps) => {
+  const navigate = useNavigate();
   const { conversationId } = useParams();
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
@@ -31,9 +32,21 @@ export const ConversationItem = ({ id, title, onDelete, onUpdate }: Conversation
   const [isDeleting, setIsDeleting] = useState(false);
   const isActive = conversationId === id;
 
+  const handleClick = () => {
+    if (!isEditing) {
+      navigate(`/chat/${id}`);
+    }
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
+      // Delete messages first
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', id);
+
       const { error } = await supabase
         .from('conversations')
         .delete()
@@ -43,6 +56,10 @@ export const ConversationItem = ({ id, title, onDelete, onUpdate }: Conversation
 
       toast.success('Conversation deleted');
       onDelete();
+      
+      if (isActive) {
+        navigate('/');
+      }
     } catch (error: any) {
       console.error('Error deleting conversation:', error);
       toast.error('Failed to delete conversation');
@@ -80,93 +97,85 @@ export const ConversationItem = ({ id, title, onDelete, onUpdate }: Conversation
     setIsEditing(false);
   };
 
-  if (isEditing) {
-    return (
-      <div className="flex items-center gap-2 px-2 py-1">
-        <Input
-          value={editTitle}
-          onChange={(e) => setEditTitle(e.target.value)}
-          className="h-8 text-sm"
-          autoFocus
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') handleSaveEdit();
-            if (e.key === 'Escape') handleCancelEdit();
-          }}
-        />
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleSaveEdit}
-          className="h-8 w-8 flex-shrink-0"
-        >
-          <Check className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleCancelEdit}
-          className="h-8 w-8 flex-shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    );
-  }
-
   return (
     <>
-      <div className="group relative">
-        <Link to={`/chat/${id}`} className="block">
-          <Button
-            variant={isActive ? "secondary" : "ghost"}
-            className="w-full justify-start gap-3 hover:bg-sidebar-accent text-left pr-20"
-          >
-            <MessageSquare className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate flex-1">{title}</span>
-          </Button>
-        </Link>
-        <div className="absolute right-2 top-1/2 -translate-y-1/2 flex gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsEditing(true);
-            }}
-            className="h-7 w-7 hover:bg-sidebar-accent"
-            title="Edit conversation title"
-          >
-            <Edit2 className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowDeleteDialog(true);
-            }}
-            className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground"
-            title="Delete conversation"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
+      <div
+        className={`group relative flex items-center gap-2 px-2.5 py-2 mx-1 rounded-lg cursor-pointer transition-all ${
+          isActive 
+            ? 'bg-primary/10 text-primary' 
+            : 'hover:bg-muted/70 text-foreground/80'
+        }`}
+        onClick={handleClick}
+      >
+        <MessageSquare className="h-3.5 w-3.5 flex-shrink-0 opacity-50" />
+        
+        {isEditing ? (
+          <div className="flex-1 flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+            <Input
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="h-6 text-xs bg-background px-1.5"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSaveEdit();
+                if (e.key === 'Escape') handleCancelEdit();
+              }}
+            />
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => { e.stopPropagation(); handleSaveEdit(); }}
+              className="h-5 w-5 rounded hover:bg-primary/20"
+            >
+              <Check className="h-3 w-3" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={(e) => { e.stopPropagation(); handleCancelEdit(); }}
+              className="h-5 w-5 rounded hover:bg-muted"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <span className="flex-1 truncate text-xs">{title}</span>
+            
+            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}
+                className="h-5 w-5 rounded hover:bg-muted"
+              >
+                <Edit2 className="h-3 w-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }}
+                className="h-5 w-5 rounded hover:bg-destructive/20 hover:text-destructive"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          </>
+        )}
       </div>
 
       <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Conversation?</AlertDialogTitle>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this conversation and all its messages. This action cannot be undone.
+              This will permanently delete this conversation and all its messages.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
+            <AlertDialogAction 
+              onClick={handleDelete} 
               disabled={isDeleting}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
