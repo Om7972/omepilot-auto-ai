@@ -9,7 +9,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Brain, Plus, Trash2, Edit2, Save, X, Search, Download, Upload, Filter, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { z } from "zod";
 
+// Schema for memory validation
+const MemorySchema = z.object({
+  key: z.string().min(1, "Key is required").max(100, "Key too long"),
+  value: z.string().min(1, "Value is required").max(5000, "Value too long"),
+  category: z.string().max(50, "Category too long").optional().default("")
+});
+
+const MemoriesArraySchema = z.array(MemorySchema).max(100, "Maximum 100 memories can be imported at once");
 interface Memory {
   id: string;
   key: string;
@@ -173,18 +182,42 @@ export const MemoryManager = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file size (max 1MB)
+    if (file.size > 1024 * 1024) {
+      toast.error('File too large. Maximum 1MB.');
+      return;
+    }
+
     try {
       const text = await file.text();
-      const importedMemories = JSON.parse(text);
+      let parsedData;
       
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        parsedData = JSON.parse(text);
+      } catch {
+        toast.error('Invalid JSON file');
+        return;
+      }
 
-      const memoriesToInsert = importedMemories.map((m: any) => ({
+      // Validate with schema
+      const validationResult = MemoriesArraySchema.safeParse(parsedData);
+      if (!validationResult.success) {
+        const errorMessage = validationResult.error.errors[0]?.message || 'Invalid data format';
+        toast.error(`Validation error: ${errorMessage}`);
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please log in to import memories');
+        return;
+      }
+
+      const memoriesToInsert = validationResult.data.map((m) => ({
         user_id: user.id,
-        key: m.key,
-        value: m.value,
-        category: m.category || ''
+        key: m.key.trim(),
+        value: m.value.trim(),
+        category: m.category?.trim() || ''
       }));
 
       const { error } = await supabase
@@ -199,7 +232,8 @@ export const MemoryManager = () => {
       toast.success(`Imported ${memoriesToInsert.length} memories`);
       loadMemories();
     } catch (error) {
-      toast.error('Invalid file format');
+      console.error('Import error:', error);
+      toast.error('Failed to import memories');
     }
   };
 

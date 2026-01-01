@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Users, UserPlus, LogOut, Sparkles } from "lucide-react";
+import { Users, UserPlus, LogOut, Sparkles, Link2, Copy, Check, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 interface Member {
   id: string;
@@ -26,6 +29,7 @@ interface Member {
 interface CollaborativeSessionProps {
   conversationId: string;
   isCollaborative: boolean;
+  onCollaborativeChange?: (isCollaborative: boolean) => void;
 }
 
 const AVAILABLE_COLORS = [
@@ -33,18 +37,42 @@ const AVAILABLE_COLORS = [
   "#8B5CF6", "#EC4899", "#14B8A6", "#F97316"
 ];
 
-export const CollaborativeSession = ({ conversationId, isCollaborative }: CollaborativeSessionProps) => {
+export const CollaborativeSession = ({ 
+  conversationId, 
+  isCollaborative,
+  onCollaborativeChange 
+}: CollaborativeSessionProps) => {
   const [members, setMembers] = useState<Member[]>([]);
-  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteUsername, setInviteUsername] = useState("");
   const [isInviting, setIsInviting] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    if (!isCollaborative || !conversationId) return;
+    if (!conversationId) return;
 
-    loadMembers();
+    checkOwnership();
+    if (isCollaborative) {
+      loadMembers();
+      setupPresence();
+    }
+  }, [conversationId, isCollaborative]);
 
-    // Subscribe to member changes
+  const checkOwnership = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data } = await supabase
+      .from('conversations')
+      .select('user_id')
+      .eq('id', conversationId)
+      .single();
+
+    setIsOwner(data?.user_id === user.id);
+  };
+
+  const setupPresence = () => {
     const channel = supabase
       .channel(`conversation-members-${conversationId}`)
       .on('postgres_changes', {
@@ -77,7 +105,7 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [conversationId, isCollaborative]);
+  };
 
   const loadMembers = async () => {
     const { data, error } = await supabase
@@ -90,7 +118,6 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
       return;
     }
 
-    // Fetch usernames for members
     const membersWithNames = await Promise.all(
       (data || []).map(async (member) => {
         const { data: profile } = await supabase
@@ -109,27 +136,66 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
     setMembers(membersWithNames);
   };
 
+  const toggleCollaborative = async (enabled: boolean) => {
+    const { error } = await supabase
+      .from('conversations')
+      .update({ is_collaborative: enabled })
+      .eq('id', conversationId);
+
+    if (error) {
+      toast.error('Failed to update collaboration settings');
+      return;
+    }
+
+    if (enabled) {
+      // Add owner as first member
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('conversation_members').upsert({
+          conversation_id: conversationId,
+          user_id: user.id,
+          color: AVAILABLE_COLORS[0],
+          role: 'owner'
+        });
+      }
+    }
+
+    onCollaborativeChange?.(enabled);
+    toast.success(enabled ? 'Collaboration enabled!' : 'Collaboration disabled');
+  };
+
   const handleInvite = async () => {
-    if (!inviteEmail.trim()) {
-      toast.error('Please enter an email address');
+    if (!inviteUsername.trim()) {
+      toast.error('Please enter a username');
       return;
     }
 
     setIsInviting(true);
     try {
-      // Find user by email (simplified - in production, use a proper invite system)
-      const { data: profiles } = await supabase
+      const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', inviteEmail)
+        .eq('username', inviteUsername.trim())
         .single();
 
-      if (!profiles) {
-        toast.error('User not found');
+      if (profileError || !profiles) {
+        toast.error('User not found. Please check the username.');
         return;
       }
 
-      // Assign a color
+      // Check if already a member
+      const { data: existing } = await supabase
+        .from('conversation_members')
+        .select('id')
+        .eq('conversation_id', conversationId)
+        .eq('user_id', profiles.id)
+        .single();
+
+      if (existing) {
+        toast.error('User is already a member');
+        return;
+      }
+
       const usedColors = members.map(m => m.color);
       const availableColor = AVAILABLE_COLORS.find(c => !usedColors.includes(c)) || AVAILABLE_COLORS[0];
 
@@ -143,11 +209,12 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
 
       if (error) throw error;
 
-      toast.success('Member invited successfully');
-      setInviteEmail('');
+      toast.success('Member added successfully');
+      setInviteUsername('');
+      loadMembers();
     } catch (error: any) {
       console.error('Error inviting member:', error);
-      toast.error(error.message || 'Failed to invite member');
+      toast.error('Failed to invite member');
     } finally {
       setIsInviting(false);
     }
@@ -169,11 +236,11 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
     }
 
     toast.success('Left the conversation');
-    window.location.href = '/chat';
+    window.location.href = '/';
   };
 
   const handleSummarize = async () => {
-    toast.info('Generating group decision summary...', { duration: 2000 });
+    toast.info('Generating summary...', { duration: 2000 });
     
     try {
       const { data, error } = await supabase.functions.invoke('chat', {
@@ -194,41 +261,101 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
     }
   };
 
-  if (!isCollaborative) return null;
+  const copyShareLink = () => {
+    const link = `${window.location.origin}/chat/${conversationId}`;
+    navigator.clipboard.writeText(link);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Link copied!');
+  };
 
   return (
-    <div className="flex items-center gap-2">
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Users className="h-4 w-4" />
-            <span className="hidden sm:inline">{members.length} Members</span>
-            <Badge variant="secondary" className="ml-1">{onlineUsers.size} online</Badge>
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Collaborative Session</DialogTitle>
-            <DialogDescription>
-              Manage team members and session settings
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Current Members */}
-            <div>
-              <h4 className="text-sm font-medium mb-2">Active Members</h4>
-              <div className="space-y-2">
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-2 h-8">
+          <Share2 className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            {isCollaborative ? `${members.length} Members` : 'Share'}
+          </span>
+          {isCollaborative && onlineUsers.size > 0 && (
+            <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+              {onlineUsers.size} online
+            </Badge>
+          )}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Collaboration
+          </DialogTitle>
+          <DialogDescription>
+            Share and collaborate on this conversation
+          </DialogDescription>
+        </DialogHeader>
+        
+        <Tabs defaultValue={isCollaborative ? "members" : "settings"} className="mt-2">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="settings">Settings</TabsTrigger>
+            <TabsTrigger value="members" disabled={!isCollaborative}>Members</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="settings" className="space-y-4 mt-4">
+            {/* Enable Collaboration Toggle */}
+            {isOwner && (
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                <div className="space-y-0.5">
+                  <Label htmlFor="collaborative">Enable Collaboration</Label>
+                  <p className="text-xs text-muted-foreground">Allow others to join this conversation</p>
+                </div>
+                <Switch
+                  id="collaborative"
+                  checked={isCollaborative}
+                  onCheckedChange={toggleCollaborative}
+                />
+              </div>
+            )}
+
+            {/* Share Link */}
+            <div className="space-y-2">
+              <Label>Share Link</Label>
+              <div className="flex gap-2">
+                <Input
+                  readOnly
+                  value={`${window.location.origin}/chat/${conversationId}`}
+                  className="text-xs"
+                />
+                <Button size="icon" variant="outline" onClick={copyShareLink}>
+                  {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {isCollaborative 
+                  ? 'Anyone with this link can view the conversation. Invite members to allow editing.'
+                  : 'Enable collaboration to allow others to participate.'}
+              </p>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="members" className="space-y-4 mt-4">
+            {/* Members List */}
+            <div className="space-y-2">
+              <Label>Active Members ({members.length})</Label>
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
                 {members.map((member) => (
                   <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                    <Avatar className="h-8 w-8" style={{ backgroundColor: member.color }}>
+                    <Avatar className="h-8 w-8">
                       <AvatarFallback style={{ backgroundColor: member.color, color: 'white' }}>
                         {member.username?.[0]?.toUpperCase() || 'U'}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="flex-1 text-sm">{member.username}</span>
+                    <span className="flex-1 text-sm font-medium">{member.username}</span>
                     {onlineUsers.has(member.user_id) && (
-                      <Badge variant="secondary" className="text-xs">Online</Badge>
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-xs text-muted-foreground">Online</span>
+                      </div>
                     )}
                   </div>
                 ))}
@@ -236,35 +363,37 @@ export const CollaborativeSession = ({ conversationId, isCollaborative }: Collab
             </div>
 
             {/* Invite Members */}
-            <div>
-              <h4 className="text-sm font-medium mb-2">Invite Member</h4>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter username..."
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
-                />
-                <Button onClick={handleInvite} disabled={isInviting} size="sm">
-                  <UserPlus className="h-4 w-4" />
-                </Button>
+            {isOwner && (
+              <div className="space-y-2">
+                <Label>Invite Member</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter username..."
+                    value={inviteUsername}
+                    onChange={(e) => setInviteUsername(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleInvite()}
+                  />
+                  <Button onClick={handleInvite} disabled={isInviting} size="sm">
+                    <UserPlus className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-2 pt-2 border-t">
-              <Button onClick={handleSummarize} variant="outline" className="flex-1 gap-2">
+              <Button onClick={handleSummarize} variant="outline" className="flex-1 gap-2" size="sm">
                 <Sparkles className="h-4 w-4" />
-                Summarize Discussion
+                Summarize
               </Button>
               <Button onClick={handleLeave} variant="destructive" size="sm" className="gap-2">
                 <LogOut className="h-4 w-4" />
                 Leave
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+          </TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
   );
 };
