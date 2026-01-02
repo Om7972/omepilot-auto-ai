@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, Settings, Sparkles } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,11 +13,15 @@ import { useTheme } from "./ThemeProvider";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { AboutDialog } from "./AboutDialog";
 import { FeedbackDialog } from "./FeedbackDialog";
+import { HelpDialog } from "./HelpDialog";
+import { SubscriptionDialog } from "./SubscriptionDialog";
 
 interface Conversation {
   id: string;
   title: string;
   created_at: string;
+  is_pinned?: boolean;
+  share_token?: string | null;
 }
 
 interface SidebarProps {
@@ -35,6 +39,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const { theme, setTheme } = useTheme();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [showHelpDialog, setShowHelpDialog] = useState(false);
+  const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
 
   useEffect(() => {
     loadConversations();
@@ -131,17 +137,22 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       conv.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Separate pinned conversations
+    const pinned = filtered.filter(conv => conv.is_pinned);
+    const unpinned = filtered.filter(conv => !conv.is_pinned);
+
     return {
-      today: filtered.filter(conv => new Date(conv.created_at) >= today),
-      yesterday: filtered.filter(conv => {
+      pinned,
+      today: unpinned.filter(conv => new Date(conv.created_at) >= today),
+      yesterday: unpinned.filter(conv => {
         const date = new Date(conv.created_at);
         return date >= yesterday && date < today;
       }),
-      pastWeek: filtered.filter(conv => {
+      pastWeek: unpinned.filter(conv => {
         const date = new Date(conv.created_at);
         return date >= lastWeek && date < yesterday;
       }),
-      older: filtered.filter(conv => new Date(conv.created_at) < lastWeek),
+      older: unpinned.filter(conv => new Date(conv.created_at) < lastWeek),
     };
   };
 
@@ -156,16 +167,21 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     { path: '/create-page', icon: FileText, label: 'Create' },
   ];
 
-  const ConversationGroup = ({ title, conversations }: { title: string; conversations: Conversation[] }) => {
+  const ConversationGroup = ({ title, conversations, icon }: { title: string; conversations: Conversation[]; icon?: React.ReactNode }) => {
     if (conversations.length === 0) return null;
     return (
       <div className="mb-2">
-        <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider">{title}</p>
+        <p className="px-3 py-1.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5">
+          {icon}
+          {title}
+        </p>
         {conversations.map((conv) => (
           <ConversationItem
             key={conv.id}
             id={conv.id}
             title={conv.title}
+            isPinned={conv.is_pinned}
+            shareToken={conv.share_token}
             onDelete={loadConversations}
             onUpdate={loadConversations}
           />
@@ -325,6 +341,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
               </span>
             </div>
             <ScrollArea className="flex-1 px-2">
+              <ConversationGroup title="Pinned" conversations={groupedConversations.pinned} icon={<Pin className="h-3 w-3" />} />
               <ConversationGroup title="Today" conversations={groupedConversations.today} />
               <ConversationGroup title="Yesterday" conversations={groupedConversations.yesterday} />
               <ConversationGroup title="Past Week" conversations={groupedConversations.pastWeek} />
@@ -403,6 +420,17 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
               
               <DropdownMenuSeparator />
               
+              <DropdownMenuItem onClick={() => setShowSubscriptionDialog(true)}>
+                <CreditCard className="h-4 w-4 mr-2" />
+                Manage Subscription
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowHelpDialog(true)}>
+                <HelpCircle className="h-4 w-4 mr-2" />
+                Help
+              </DropdownMenuItem>
+              
+              <DropdownMenuSeparator />
+              
               <DropdownMenuItem onClick={() => setShowAboutDialog(true)}>
                 <Info className="h-4 w-4 mr-2" />
                 About
@@ -424,6 +452,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       
       <AboutDialog open={showAboutDialog} onOpenChange={setShowAboutDialog} />
       <FeedbackDialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog} />
+      <HelpDialog open={showHelpDialog} onOpenChange={setShowHelpDialog} />
+      <SubscriptionDialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog} />
     </TooltipProvider>
   );
 };

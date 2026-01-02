@@ -54,6 +54,8 @@ export type Database = {
           created_at: string
           id: string
           is_collaborative: boolean | null
+          is_pinned: boolean | null
+          share_token: string | null
           title: string
           updated_at: string
           user_id: string
@@ -62,6 +64,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean | null
+          is_pinned?: boolean | null
+          share_token?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -70,6 +74,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_collaborative?: boolean | null
+          is_pinned?: boolean | null
+          share_token?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -418,6 +424,7 @@ export type Database = {
         Args: { _question_id: string; _user_answer: string }
         Returns: Json
       }
+      generate_share_token: { Args: never; Returns: string }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
