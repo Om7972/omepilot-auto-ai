@@ -344,17 +344,50 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(prev => prev + (prev ? ' ' : '') + transcript);
-        setIsListening(false);
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        
+        if (finalTranscript) {
+          setInput(prev => prev + (prev ? ' ' : '') + finalTranscript);
+        }
       };
 
-      recognitionRef.current.onerror = () => {
+      recognitionRef.current.onerror = (event: any) => {
         setIsListening(false);
-        toast.error('Voice recognition error. Please try again.');
+        
+        // Handle specific error types
+        switch (event.error) {
+          case 'no-speech':
+            toast.error('No speech detected. Please try speaking again.');
+            break;
+          case 'audio-capture':
+            toast.error('Microphone not found. Please check your microphone settings.');
+            break;
+          case 'not-allowed':
+            toast.error('Microphone access denied. Please allow microphone access in your browser settings.');
+            break;
+          case 'network':
+            toast.error('Network error. Please check your internet connection.');
+            break;
+          case 'aborted':
+            // User aborted, no need to show error
+            break;
+          default:
+            toast.error('Voice recognition unavailable. Please try again or type your message.');
+        }
       };
 
       recognitionRef.current.onend = () => {
@@ -363,9 +396,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     }
   }, []);
 
-  const toggleVoiceInput = () => {
+  const toggleVoiceInput = async () => {
     if (!recognitionRef.current) {
-      toast.error('Voice input not supported in your browser');
+      toast.error('Voice input not supported in your browser. Try Chrome, Edge, or Safari.');
       return;
     }
 
@@ -373,9 +406,21 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       recognitionRef.current.stop();
       setIsListening(false);
     } else {
-      recognitionRef.current.start();
-      setIsListening(true);
-      toast.info('Listening...');
+      try {
+        // Request microphone permission first
+        await navigator.mediaDevices.getUserMedia({ audio: true });
+        recognitionRef.current.start();
+        setIsListening(true);
+        toast.info('Listening... Speak now', { duration: 2000 });
+      } catch (err: any) {
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          toast.error('Microphone access denied. Please allow microphone access to use voice input.');
+        } else if (err.name === 'NotFoundError') {
+          toast.error('No microphone found. Please connect a microphone.');
+        } else {
+          toast.error('Could not access microphone. Please check your settings.');
+        }
+      }
     }
   };
 
