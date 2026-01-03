@@ -49,6 +49,16 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const [userName, setUserName] = useState("User");
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
+  const [voiceMode, setVoiceMode] = useState<"browser" | "server">(() => {
+    const saved = localStorage.getItem("voice_mode");
+    if (saved === "browser" || saved === "server") return saved;
+
+    const hasBrowserSpeech =
+      "webkitSpeechRecognition" in window || "SpeechRecognition" in window;
+
+    return hasBrowserSpeech ? "browser" : "server";
+  });
   const [selectedPersona, setSelectedPersona] = useState<string>('gemini');
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
@@ -56,6 +66,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaChunksRef = useRef<Blob[]>([]);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
   const typingChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
 
@@ -346,6 +359,133 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     }
   };
 
+  const setAndPersistVoiceMode = (mode: "browser" | "server") => {
+    setVoiceMode(mode);
+    localStorage.setItem("voice_mode", mode);
+  };
+
+  const getRecorderMimeType = () => {
+    if (typeof MediaRecorder === "undefined") return "";
+
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/ogg",
+    ];
+
+    for (const type of candidates) {
+      if (MediaRecorder.isTypeSupported?.(type)) return type;
+    }
+
+    return "";
+  };
+
+  const stopRecordingStream = () => {
+    mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+    mediaStreamRef.current = null;
+  };
+
+  const toggleServerVoiceInput = async () => {
+    if (isTranscribing) return;
+
+    if (isListening) {
+      try {
+        mediaRecorderRef.current?.stop();
+      } catch {
+        // ignore
+      } finally {
+        setIsListening(false);
+      }
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const mimeType = getRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      mediaRecorderRef.current = recorder;
+      mediaChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) mediaChunksRef.current.push(e.data);
+      };
+
+      recorder.onerror = () => {
+        setIsListening(false);
+        stopRecordingStream();
+        toast.error("Recording failed. Please try again.");
+      };
+
+      recorder.onstop = async () => {
+        setIsListening(false);
+        stopRecordingStream();
+
+        const blob = new Blob(mediaChunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        mediaChunksRef.current = [];
+
+        if (blob.size === 0) return;
+
+        setIsTranscribing(true);
+        toast.info("Transcribing…", { duration: 2000 });
+
+        try {
+          const form = new FormData();
+          form.append("audio", blob, "audio.webm");
+
+          const { data, error } = await supabase.functions.invoke(
+            "voice-transcribe",
+            {
+              body: form as any,
+            }
+          );
+
+          if (error) throw error;
+
+          const text = (data as any)?.text?.toString?.() ?? "";
+          if (!text.trim()) {
+            toast.error("No speech detected. Please try again.");
+            return;
+          }
+
+          setInput((prev) => prev + (prev ? " " : "") + text.trim());
+          toast.success("Voice added", { duration: 1200 });
+        } catch (err: any) {
+          toast.error(
+            err?.message?.includes("Unauthorized")
+              ? "Please log in to use voice input."
+              : "Transcription failed. Please try again."
+          );
+        } finally {
+          setIsTranscribing(false);
+        }
+      };
+
+      recorder.start();
+      setIsListening(true);
+      toast.info("Recording… click the mic to stop.", { duration: 2000 });
+    } catch (err: any) {
+      stopRecordingStream();
+
+      if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+        toast.error(
+          "Microphone access denied. Please allow microphone access to use voice input."
+        );
+      } else if (err.name === "NotFoundError") {
+        toast.error("No microphone found. Please connect a microphone.");
+      } else {
+        toast.error("Could not access microphone. Please check your settings.");
+      }
+    }
+  };
+
   const createSpeechRecognition = () => {
     const SpeechRecognitionCtor =
       (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
@@ -375,10 +515,11 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     recognition.onerror = (event: any) => {
       setIsListening(false);
 
-      // NOTE: In embedded previews (iframes), SpeechRecognition commonly reports a misleading "network" error.
+      // In embedded previews (iframes), browser SpeechRecognition often misbehaves.
       if (isEmbeddedPreview()) {
+        setAndPersistVoiceMode("server");
         toast.error(
-          "Voice input doesn't work inside the embedded preview. Open the app in a new tab and try again."
+          "Browser voice recognition isn't reliable in preview. Switched to recording mode—click the mic to record."
         );
         return;
       }
@@ -400,9 +541,10 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
         case "network":
           toast.error(
             navigator.onLine
-              ? "Voice recognition service couldn't be reached. Try reloading the page or switching browser."
+              ? "Browser voice service couldn't be reached. Switching to recording mode."
               : "You're offline. Connect to the internet and try again."
           );
+          setAndPersistVoiceMode("server");
           // Reset the instance; some browsers get stuck after a network error.
           recognitionRef.current = null;
           break;
@@ -411,8 +553,10 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           break;
         default:
           toast.error(
-            "Voice recognition unavailable. Please try again or type your message."
+            "Voice recognition unavailable. Switching to recording mode."
           );
+          setAndPersistVoiceMode("server");
+          recognitionRef.current = null;
       }
     };
 
@@ -424,7 +568,8 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   };
 
   useEffect(() => {
-    // Initialize speech recognition once.
+    if (voiceMode !== "browser") return;
+
     recognitionRef.current = createSpeechRecognition();
 
     return () => {
@@ -434,14 +579,29 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
         // ignore
       }
     };
+  }, [voiceMode]);
+
+  useEffect(() => {
+    return () => {
+      try {
+        mediaRecorderRef.current?.stop();
+      } catch {
+        // ignore
+      }
+      stopRecordingStream();
+    };
   }, []);
 
   const toggleVoiceInput = async () => {
-    // Avoid misleading "network" errors from embedded preview/iframes.
+    if (voiceMode === "server") {
+      await toggleServerVoiceInput();
+      return;
+    }
+
+    // In preview, use server transcription (MediaRecorder) instead of browser SpeechRecognition.
     if (isEmbeddedPreview()) {
-      toast.error(
-        "Voice input doesn't work inside the embedded preview. Open the app in a new tab and try again."
-      );
+      setAndPersistVoiceMode("server");
+      await toggleServerVoiceInput();
       return;
     }
 
@@ -450,9 +610,8 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     }
 
     if (!recognitionRef.current) {
-      toast.error(
-        "Voice input not supported in your browser. Try Chrome, Edge, or Safari."
-      );
+      setAndPersistVoiceMode("server");
+      await toggleServerVoiceInput();
       return;
     }
 
@@ -466,10 +625,8 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     }
 
     try {
-      // Request microphone permission first
       await navigator.mediaDevices.getUserMedia({ audio: true });
 
-      // Some browsers require a fresh instance after failures.
       try {
         recognitionRef.current.start();
       } catch {
@@ -478,7 +635,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       }
 
       setIsListening(true);
-      toast.info("Listening... Speak now", { duration: 2000 });
+      toast.info("Listening… speak now", { duration: 2000 });
     } catch (err: any) {
       if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
         toast.error(
@@ -633,8 +790,15 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                 size="icon"
                 variant="ghost"
                 onClick={toggleVoiceInput}
+                disabled={isTranscribing}
                 className={`rounded-full hover:bg-accent h-10 w-10 ${isListening ? 'bg-primary/20 text-primary' : ''}`}
-                title="Voice input"
+                title={
+                  voiceMode === "server"
+                    ? isListening
+                      ? "Stop recording"
+                      : "Record voice"
+                    : "Voice input"
+                }
               >
                 <Mic className="h-5 w-5" />
               </Button>
