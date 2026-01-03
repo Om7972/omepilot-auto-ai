@@ -107,6 +107,7 @@ const App = () => (
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+              <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
               <Route path="/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
               <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
               <Route path="/creator-gallery" element={<ProtectedRoute><CreatorGalleryPage /></ProtectedRoute>} />

@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ShareDialog } from "./ShareDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -45,6 +46,7 @@ export const ConversationItem = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isActive = conversationId === id;
 
@@ -129,29 +131,8 @@ export const ConversationItem = ({
     }
   };
 
-  const handleShare = async () => {
-    try {
-      let token = shareToken;
-      
-      if (!token) {
-        // Generate new share token
-        token = crypto.randomUUID();
-        const { error } = await supabase
-          .from('conversations')
-          .update({ share_token: token })
-          .eq('id', id);
-
-        if (error) throw error;
-        onUpdate();
-      }
-
-      const shareUrl = `${window.location.origin}/chat/${id}?share=${token}`;
-      await navigator.clipboard.writeText(shareUrl);
-      toast.success('Share link copied to clipboard');
-    } catch (error: any) {
-      console.error('Error sharing conversation:', error);
-      toast.error('Failed to share conversation');
-    }
+  const handleShare = () => {
+    setShowShareDialog(true);
   };
 
   return (
@@ -261,6 +242,14 @@ export const ConversationItem = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ShareDialog
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
+        conversationId={id}
+        shareToken={shareToken}
+        onUpdate={onUpdate}
+      />
     </>
   );
 };
