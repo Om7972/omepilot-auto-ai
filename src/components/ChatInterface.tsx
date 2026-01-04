@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -9,6 +9,8 @@ import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
 import { ChatLandingPage } from "@/components/ChatLandingPage";
+import { MessageFeedback } from "@/components/MessageFeedback";
+import { ProactiveSuggestions } from "@/components/ProactiveSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -43,6 +45,7 @@ const AI_MODELS = [
 export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: ChatInterfaceProps) => {
   const { conversationId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -694,6 +697,13 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           />
         ) : (
           <div className="max-w-3xl mx-auto space-y-6">
+            {/* Proactive Suggestions at the top of conversation */}
+            {messages.length > 0 && messages.length < 3 && (
+              <ProactiveSuggestions 
+                onSuggestionClick={handleQuickAction}
+                className="mb-4"
+              />
+            )}
             {messages.map((message) => {
               const userColor = message.user_id ? getUserColor(message.user_id) : null;
               const isCurrentUser = message.user_id === currentUserId;
@@ -701,7 +711,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
               return (
                 <div
                   key={message.id}
-                  className={`flex gap-3 ${
+                  className={`group flex gap-3 ${
                     message.role === 'user' ? 'justify-end' : 'justify-start'
                   }`}
                 >
@@ -737,6 +747,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                     >
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
+                    {/* Feedback buttons for AI messages */}
+                    {message.role === 'assistant' && (
+                      <div className="flex items-center gap-2 mt-1">
+                        <MessageFeedback messageId={message.id} />
+                      </div>
+                    )}
                   </div>
                 </div>
               );

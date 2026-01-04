@@ -13,6 +13,7 @@ import CreatePage from "./pages/CreatePage";
 import QuizPage from "./pages/QuizPage";
 import SearchPage from "./pages/SearchPage";
 import MemoryPage from "./pages/MemoryPage";
+import DashboardPage from "./pages/DashboardPage";
 import NotFound from "./pages/NotFound";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -115,6 +116,7 @@ const App = () => (
               <Route path="/quiz" element={<ProtectedRoute><QuizPage /></ProtectedRoute>} />
               <Route path="/search" element={<ProtectedRoute><SearchPage /></ProtectedRoute>} />
               <Route path="/memory" element={<ProtectedRoute><MemoryPage /></ProtectedRoute>} />
+              <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
