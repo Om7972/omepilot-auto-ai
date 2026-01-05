@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Trash2, Edit2, Check, X, Pin, Share2, MoreHorizontal } from "lucide-react";
+import { MessageSquare, Trash2, Edit2, Check, X, Pin, Share2, MoreHorizontal, Download } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ShareDialog } from "./ShareDialog";
+import { ExportChatDialog } from "./ExportChatDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -47,6 +48,7 @@ export const ConversationItem = ({
   const [editTitle, setEditTitle] = useState(title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showShareDialog, setShowShareDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const isActive = conversationId === id;
 
@@ -208,6 +210,10 @@ export const ConversationItem = ({
                   <Share2 className="h-4 w-4 mr-2" />
                   Share
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowExportDialog(true); }}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }}
@@ -249,6 +255,13 @@ export const ConversationItem = ({
         conversationId={id}
         shareToken={shareToken}
         onUpdate={onUpdate}
+      />
+
+      <ExportChatDialog
+        open={showExportDialog}
+        onOpenChange={setShowExportDialog}
+        conversationId={id}
+        conversationTitle={title}
       />
     </>
   );

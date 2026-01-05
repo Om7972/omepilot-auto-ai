@@ -450,6 +450,51 @@ export type Database = {
         }
         Relationships: []
       }
+      user_preferences: {
+        Row: {
+          auto_save_conversations: boolean | null
+          created_at: string
+          default_ai_model: string | null
+          email_notifications: boolean | null
+          id: string
+          language: string | null
+          notifications_enabled: boolean | null
+          sound_enabled: boolean | null
+          theme: string | null
+          updated_at: string
+          user_id: string
+          voice_mode: string | null
+        }
+        Insert: {
+          auto_save_conversations?: boolean | null
+          created_at?: string
+          default_ai_model?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id: string
+          voice_mode?: string | null
+        }
+        Update: {
+          auto_save_conversations?: boolean | null
+          created_at?: string
+          default_ai_model?: string | null
+          email_notifications?: boolean | null
+          id?: string
+          language?: string | null
+          notifications_enabled?: boolean | null
+          sound_enabled?: boolean | null
+          theme?: string | null
+          updated_at?: string
+          user_id?: string
+          voice_mode?: string | null
+        }
+        Relationships: []
+      }
       user_stats: {
         Row: {
           badges: Json
@@ -494,7 +539,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      leaderboard_view: {
+        Row: {
+          badges: Json | null
+          current_streak: number | null
+          longest_streak: number | null
+          messages_sent: number | null
+          total_points: number | null
+          user_id: string | null
+          username: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_quiz_answer: {
