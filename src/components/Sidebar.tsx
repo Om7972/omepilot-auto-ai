@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -160,12 +160,14 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
     { path: '/discover', icon: Compass, label: 'Discover' },
     { path: '/creator-gallery', icon: Palette, label: 'Creator Studio' },
     { path: '/quiz', icon: BookOpen, label: 'Quiz' },
     { path: '/search', icon: Globe, label: 'Search' },
     { path: '/memory', icon: Brain, label: 'Memory' },
     { path: '/create-page', icon: FileText, label: 'Create' },
+    { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
   const ConversationGroup = ({ title, conversations, icon }: { title: string; conversations: Conversation[]; icon?: React.ReactNode }) => {
