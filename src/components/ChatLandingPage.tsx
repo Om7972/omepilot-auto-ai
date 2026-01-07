@@ -128,18 +128,21 @@ export const ChatLandingPage = ({ userName, onQuickAction }: ChatLandingPageProp
         {features.map((feature) => (
           <Card 
             key={feature.title}
-            className={`group p-6 hover:shadow-xl transition-all duration-300 hover:scale-105 border-border/50 hover:border-primary/50 cursor-pointer bg-gradient-to-br ${feature.gradient}`}
+            className="group relative overflow-hidden border border-border/50 hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
           >
-            <div className="space-y-3">
-              <div className="p-3 rounded-lg bg-background/80 w-fit group-hover:bg-background transition-colors">
-                <feature.icon className="w-7 h-7 text-primary group-hover:scale-110 transition-transform" />
+            <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-50`} />
+            <div className="relative p-6 space-y-4">
+              <div className="p-3 rounded-xl bg-background/80 backdrop-blur-sm w-fit shadow-sm group-hover:shadow-md transition-shadow">
+                <feature.icon className="w-7 h-7 text-primary group-hover:scale-110 transition-transform duration-300" />
               </div>
-              <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
-                {feature.title}
-              </h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
+              <div className="space-y-2">
+                <h3 className="font-bold text-lg text-foreground group-hover:text-primary transition-colors">
+                  {feature.title}
+                </h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
             </div>
           </Card>
         ))}

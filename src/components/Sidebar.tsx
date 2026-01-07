@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -15,6 +15,9 @@ import { AboutDialog } from "./AboutDialog";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { HelpDialog } from "./HelpDialog";
 import { SubscriptionDialog } from "./SubscriptionDialog";
+import { NotificationCenter } from "./NotificationCenter";
+import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 
 interface Conversation {
   id: string;
@@ -41,6 +44,13 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+
+  useKeyboardShortcuts({
+    onNewChat: handleNewChat,
+    onToggleSidebar: onToggle,
+    onHelp: () => setShowShortcutsDialog(true),
+  });
 
   useEffect(() => {
     loadConversations();
@@ -160,6 +170,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/profile', icon: User, label: 'Profile' },
     { path: '/leaderboard', icon: Trophy, label: 'Leaderboard' },
     { path: '/discover', icon: Compass, label: 'Discover' },
     { path: '/creator-gallery', icon: Palette, label: 'Creator Studio' },
@@ -227,7 +238,21 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right">New chat</TooltipContent>
+                <TooltipContent side="right">New chat (Ctrl+N)</TooltipContent>
+              </Tooltip>
+              <NotificationCenter />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setShowShortcutsDialog(true)}
+                    className="h-8 w-8 rounded-lg hover:bg-muted"
+                  >
+                    <Keyboard className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">Shortcuts (?)</TooltipContent>
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -457,6 +482,10 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       <FeedbackDialog open={showFeedbackDialog} onOpenChange={setShowFeedbackDialog} />
       <HelpDialog open={showHelpDialog} onOpenChange={setShowHelpDialog} />
       <SubscriptionDialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog} />
+      <KeyboardShortcutsDialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog} />
+    </TooltipProvider>
+  );
+};
     </TooltipProvider>
   );
 };
