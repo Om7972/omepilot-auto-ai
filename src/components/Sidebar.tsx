@@ -46,11 +46,6 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
 
-  useKeyboardShortcuts({
-    onNewChat: handleNewChat,
-    onToggleSidebar: onToggle,
-    onHelp: () => setShowShortcutsDialog(true),
-  });
 
   useEffect(() => {
     loadConversations();
@@ -129,6 +124,12 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     navigate('/');
     toast.success('Starting new conversation');
   };
+
+  useKeyboardShortcuts({
+    onNewChat: handleNewChat,
+    onToggleSidebar: onToggle,
+    onHelp: () => setShowShortcutsDialog(true),
+  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -483,9 +484,6 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       <HelpDialog open={showHelpDialog} onOpenChange={setShowHelpDialog} />
       <SubscriptionDialog open={showSubscriptionDialog} onOpenChange={setShowSubscriptionDialog} />
       <KeyboardShortcutsDialog open={showShortcutsDialog} onOpenChange={setShowShortcutsDialog} />
-    </TooltipProvider>
-  );
-};
     </TooltipProvider>
   );
 };
