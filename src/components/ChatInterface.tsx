@@ -7,6 +7,7 @@ import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, 
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
+import { OnlineUsersIndicator } from "@/components/OnlineUsersIndicator";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
 import { ChatLandingPage } from "@/components/ChatLandingPage";
 import { MessageFeedback } from "@/components/MessageFeedback";
@@ -679,13 +680,18 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           )}
           <h2 className="text-lg font-semibold">Omepilot</h2>
         </div>
-        {conversationId && (
-          <CollaborativeSession 
-            conversationId={conversationId} 
-            isCollaborative={isCollaborative}
-            onCollaborativeChange={handleCollaborativeChange}
-          />
-        )}
+        <div className="flex items-center gap-3">
+          {conversationId && isCollaborative && (
+            <OnlineUsersIndicator conversationId={conversationId} />
+          )}
+          {conversationId && (
+            <CollaborativeSession 
+              conversationId={conversationId} 
+              isCollaborative={isCollaborative}
+              onCollaborativeChange={handleCollaborativeChange}
+            />
+          )}
+        </div>
       </div>
 
       {/* Messages */}
