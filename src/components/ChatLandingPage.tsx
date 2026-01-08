@@ -136,59 +136,57 @@ export const ChatLandingPage = ({ userName, onQuickAction }: ChatLandingPageProp
         </motion.div>
 
         {/* Welcome Text */}
-        <div className="text-center space-y-4">
-          <motion.h1 
-            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold"
+        <div className="text-center space-y-3">
+          <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.6 }}
+            className="space-y-1"
           >
-            <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent bg-[length:200%_100%] animate-gradient">
-              Welcome back,
+            <span className="text-sm md:text-base font-medium text-muted-foreground uppercase tracking-wider">
+              Welcome back
             </span>
-            <br />
-            <span className="text-foreground">{userName}!</span>
-          </motion.h1>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-foreground">
+              {userName}
+            </h1>
+          </motion.div>
           
           <motion.p 
-            className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
+            className="text-sm md:text-base text-muted-foreground max-w-md mx-auto leading-relaxed"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4 }}
           >
-            Your AI-powered command center for creativity, productivity, and innovation
+            Your AI-powered command center for creativity and productivity
           </motion.p>
         </div>
 
-        {/* User Stats Badges */}
+        {/* User Stats Inline */}
         <AnimatePresence>
           {stats && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
-              className="flex flex-wrap items-center justify-center gap-3"
+              className="flex items-center gap-4 text-sm"
             >
               {stats.current_streak > 0 && (
-                <motion.div whileHover={{ scale: 1.05 }}>
-                  <Badge className="px-4 py-2 bg-gradient-to-r from-orange-500/20 to-red-500/20 text-orange-500 border-orange-500/30 backdrop-blur-sm">
-                    <Flame className="h-4 w-4 mr-1.5 animate-pulse" />
-                    {stats.current_streak} day streak
-                  </Badge>
-                </motion.div>
+                <div className="flex items-center gap-1.5 text-orange-500">
+                  <Flame className="h-4 w-4" />
+                  <span className="font-semibold">{stats.current_streak}</span>
+                  <span className="text-muted-foreground">day streak</span>
+                </div>
               )}
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <Badge className="px-4 py-2 bg-gradient-to-r from-primary/20 to-purple-500/20 text-primary border-primary/30 backdrop-blur-sm">
-                  <Star className="h-4 w-4 mr-1.5" />
-                  {stats.total_points.toLocaleString()} XP
-                </Badge>
-              </motion.div>
-              <motion.div whileHover={{ scale: 1.05 }}>
-                <Badge className="px-4 py-2 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 text-blue-500 border-blue-500/30 backdrop-blur-sm">
-                  <MessageSquare className="h-4 w-4 mr-1.5" />
-                  {stats.messages_sent.toLocaleString()} messages
-                </Badge>
-              </motion.div>
+              <div className="flex items-center gap-1.5 text-primary">
+                <Star className="h-4 w-4" />
+                <span className="font-semibold">{stats.total_points.toLocaleString()}</span>
+                <span className="text-muted-foreground">XP</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-blue-500">
+                <MessageSquare className="h-4 w-4" />
+                <span className="font-semibold">{stats.messages_sent.toLocaleString()}</span>
+                <span className="text-muted-foreground">messages</span>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
@@ -244,38 +242,7 @@ export const ChatLandingPage = ({ userName, onQuickAction }: ChatLandingPageProp
         </div>
       </motion.div>
 
-      {/* Stats Counters */}
-      {stats && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1 }}
-          className="relative grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mt-16 w-full max-w-3xl z-10"
-        >
-          <StatsCounter
-            value={stats.total_points}
-            label="Total XP Earned"
-            icon={Star}
-            color="text-primary"
-            delay={1.1}
-          />
-          <StatsCounter
-            value={stats.current_streak}
-            label="Current Streak"
-            icon={Flame}
-            suffix=" days"
-            color="text-orange-500"
-            delay={1.2}
-          />
-          <StatsCounter
-            value={stats.messages_sent}
-            label="Messages Sent"
-            icon={MessageSquare}
-            color="text-blue-500"
-            delay={1.3}
-          />
-        </motion.div>
-      )}
+      {/* Removed duplicate stats section - stats are now shown inline in hero */}
 
       {/* Platform Showcase */}
       <PlatformShowcase />
