@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
@@ -13,7 +13,9 @@ import { ChatLandingPage } from "@/components/ChatLandingPage";
 import { MessageFeedback } from "@/components/MessageFeedback";
 import { MessageReactions } from "@/components/MessageReactions";
 import { CollaborativeNotifications } from "@/components/CollaborativeNotifications";
+import { PinnedMessages } from "@/components/PinnedMessages";
 import { ProactiveSuggestions } from "@/components/ProactiveSuggestions";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -206,6 +208,44 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       console.error('Error loading messages:', error);
       toast.error('Failed to load conversation');
       navigate('/chat');
+    }
+  };
+
+  const handlePinMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          is_pinned: true, 
+          pinned_at: new Date().toISOString(),
+          pinned_by: currentUserId 
+        })
+        .eq('id', messageId);
+
+      if (error) throw error;
+      toast.success('Message pinned');
+    } catch (error) {
+      console.error('Error pinning message:', error);
+      toast.error('Failed to pin message');
+    }
+  };
+
+  const handleUnpinMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          is_pinned: false, 
+          pinned_at: null,
+          pinned_by: null 
+        })
+        .eq('id', messageId);
+
+      if (error) throw error;
+      toast.success('Message unpinned');
+    } catch (error) {
+      console.error('Error unpinning message:', error);
+      toast.error('Failed to unpin message');
     }
   };
 
@@ -703,6 +743,14 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
         isCollaborative={isCollaborative}
       />
 
+      {/* Pinned Messages */}
+      {conversationId && (
+        <PinnedMessages
+          conversationId={conversationId}
+          onUnpin={handleUnpinMessage}
+        />
+      )}
+
       {/* Messages */}
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
         {messages.length === 0 ? (
@@ -762,9 +810,22 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                     >
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
-                    {/* Reactions and Feedback */}
-                    <div className="flex items-center gap-2 mt-1">
+                    {/* Reactions, Pin, and Feedback */}
+                    <div className="flex items-center gap-1 mt-1">
                       <MessageReactions messageId={message.id} />
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handlePinMessage(message.id)}
+                            className="h-7 w-7 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Pin className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Pin message</TooltipContent>
+                      </Tooltip>
                       {message.role === 'assistant' && (
                         <MessageFeedback messageId={message.id} />
                       )}

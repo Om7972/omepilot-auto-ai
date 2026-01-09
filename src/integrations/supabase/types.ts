@@ -199,6 +199,9 @@ export type Database = {
           conversation_id: string
           created_at: string
           id: string
+          is_pinned: boolean
+          pinned_at: string | null
+          pinned_by: string | null
           role: string
           user_id: string | null
         }
@@ -207,6 +210,9 @@ export type Database = {
           conversation_id: string
           created_at?: string
           id?: string
+          is_pinned?: boolean
+          pinned_at?: string | null
+          pinned_by?: string | null
           role: string
           user_id?: string | null
         }
@@ -215,6 +221,9 @@ export type Database = {
           conversation_id?: string
           created_at?: string
           id?: string
+          is_pinned?: boolean
+          pinned_at?: string | null
+          pinned_by?: string | null
           role?: string
           user_id?: string | null
         }
