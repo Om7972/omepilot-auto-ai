@@ -11,6 +11,8 @@ import { OnlineUsersIndicator } from "@/components/OnlineUsersIndicator";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
 import { ChatLandingPage } from "@/components/ChatLandingPage";
 import { MessageFeedback } from "@/components/MessageFeedback";
+import { MessageReactions } from "@/components/MessageReactions";
+import { CollaborativeNotifications } from "@/components/CollaborativeNotifications";
 import { ProactiveSuggestions } from "@/components/ProactiveSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -694,6 +696,13 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
         </div>
       </div>
 
+      {/* Collaborative Notifications */}
+      <CollaborativeNotifications
+        conversationId={conversationId || ''}
+        currentUserId={currentUserId}
+        isCollaborative={isCollaborative}
+      />
+
       {/* Messages */}
       <ScrollArea className="flex-1 p-6" ref={scrollRef}>
         {messages.length === 0 ? (
@@ -753,12 +762,13 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                     >
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
-                    {/* Feedback buttons for AI messages */}
-                    {message.role === 'assistant' && (
-                      <div className="flex items-center gap-2 mt-1">
+                    {/* Reactions and Feedback */}
+                    <div className="flex items-center gap-2 mt-1">
+                      <MessageReactions messageId={message.id} />
+                      {message.role === 'assistant' && (
                         <MessageFeedback messageId={message.id} />
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               );
