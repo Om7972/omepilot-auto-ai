@@ -10,9 +10,10 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Download, FileText, FileJson, FileCode } from "lucide-react";
+import { Download, FileText, FileJson, FileCode, File } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import jsPDF from "jspdf";
 
 interface ExportChatDialogProps {
   open: boolean;
@@ -21,7 +22,7 @@ interface ExportChatDialogProps {
   conversationTitle?: string;
 }
 
-type ExportFormat = 'txt' | 'json' | 'md';
+type ExportFormat = 'txt' | 'json' | 'md' | 'pdf';
 
 export const ExportChatDialog = ({
   open,
@@ -35,7 +36,6 @@ export const ExportChatDialog = ({
   const exportChat = async () => {
     setIsExporting(true);
     try {
-      // Fetch all messages for this conversation
       const { data: messages, error } = await supabase
         .from('messages')
         .select('role, content, created_at')
@@ -49,13 +49,72 @@ export const ExportChatDialog = ({
         return;
       }
 
-      let content = '';
-      let filename = '';
-      let mimeType = '';
-
       const sanitizedTitle = conversationTitle
         .replace(/[^a-z0-9]/gi, '_')
         .substring(0, 50);
+
+      if (format === 'pdf') {
+        const pdf = new jsPDF();
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 20;
+        const maxWidth = pageWidth - margin * 2;
+        let yPosition = margin;
+
+        pdf.setFontSize(18);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(conversationTitle, margin, yPosition);
+        yPosition += 10;
+
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`Exported on ${new Date().toLocaleDateString()}`, margin, yPosition);
+        yPosition += 15;
+
+        pdf.setTextColor(0, 0, 0);
+
+        for (const msg of messages) {
+          const role = msg.role === 'user' ? 'You' : 'Omepilot';
+          const time = new Date(msg.created_at).toLocaleTimeString();
+
+          if (yPosition > pageHeight - 40) {
+            pdf.addPage();
+            yPosition = margin;
+          }
+
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(msg.role === 'user' ? 59 : 16, msg.role === 'user' ? 130 : 185, msg.role === 'user' ? 246 : 129);
+          pdf.text(`${role} (${time})`, margin, yPosition);
+          yPosition += 6;
+
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(0, 0, 0);
+          
+          const lines = pdf.splitTextToSize(msg.content, maxWidth);
+          for (const line of lines) {
+            if (yPosition > pageHeight - 20) {
+              pdf.addPage();
+              yPosition = margin;
+            }
+            pdf.text(line, margin, yPosition);
+            yPosition += 5;
+          }
+          
+          yPosition += 8;
+        }
+
+        pdf.save(`${sanitizedTitle}_chat.pdf`);
+        toast.success('Chat exported as PDF');
+        onOpenChange(false);
+        return;
+      }
+
+      let content = '';
+      let filename = '';
+      let mimeType = '';
 
       switch (format) {
         case 'txt':
@@ -95,7 +154,6 @@ export const ExportChatDialog = ({
           break;
       }
 
-      // Create and download the file
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -149,6 +207,17 @@ export const ExportChatDialog = ({
                 <div>
                   <p className="font-medium">Markdown (.md)</p>
                   <p className="text-sm text-muted-foreground">Formatted with headers and styling</p>
+                </div>
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 cursor-pointer mt-2">
+              <RadioGroupItem value="pdf" id="pdf" />
+              <Label htmlFor="pdf" className="flex items-center gap-3 cursor-pointer flex-1">
+                <File className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">PDF Document (.pdf)</p>
+                  <p className="text-sm text-muted-foreground">Professional document format</p>
                 </div>
               </Label>
             </div>

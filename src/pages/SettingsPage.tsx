@@ -126,33 +126,76 @@ export default function SettingsPage() {
     setIsSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        toast.error("Please log in to save settings");
+        return;
+      }
 
       // Update profile
-      await supabase
+      const { error: profileError } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, username });
+        .upsert({ id: user.id, username }, { onConflict: 'id' });
 
-      // Update preferences
-      const { error } = await supabase
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+      }
+
+      // Check if preferences exist
+      const { data: existingPrefs } = await supabase
         .from('user_preferences')
-        .upsert({
-          user_id: user.id,
-          ...preferences,
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .single();
 
-      if (error) throw error;
+      let prefsError;
+      if (existingPrefs) {
+        // Update existing preferences
+        const { error } = await supabase
+          .from('user_preferences')
+          .update({
+            theme: preferences.theme,
+            language: preferences.language,
+            notifications_enabled: preferences.notifications_enabled,
+            email_notifications: preferences.email_notifications,
+            sound_enabled: preferences.sound_enabled,
+            auto_save_conversations: preferences.auto_save_conversations,
+            voice_mode: preferences.voice_mode,
+            default_ai_model: preferences.default_ai_model,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+        prefsError = error;
+      } else {
+        // Insert new preferences
+        const { error } = await supabase
+          .from('user_preferences')
+          .insert({
+            user_id: user.id,
+            theme: preferences.theme,
+            language: preferences.language,
+            notifications_enabled: preferences.notifications_enabled,
+            email_notifications: preferences.email_notifications,
+            sound_enabled: preferences.sound_enabled,
+            auto_save_conversations: preferences.auto_save_conversations,
+            voice_mode: preferences.voice_mode,
+            default_ai_model: preferences.default_ai_model,
+          });
+        prefsError = error;
+      }
+
+      if (prefsError) throw prefsError;
 
       // Apply theme
       setTheme(preferences.theme as "light" | "dark" | "system");
       
-      // Save voice mode to localStorage
+      // Save settings to localStorage as backup
       localStorage.setItem("voice_mode", preferences.voice_mode);
+      localStorage.setItem("sound_enabled", String(preferences.sound_enabled));
 
       toast.success("Settings saved successfully!");
     } catch (error: any) {
       console.error('Error saving settings:', error);
-      toast.error("Failed to save settings");
+      toast.error("Failed to save settings: " + (error.message || "Unknown error"));
     } finally {
       setIsSaving(false);
     }
