@@ -16,6 +16,12 @@ export const FileUpload = ({ conversationId, onFileUploaded }: FileUploadProps) 
     const file = event.target.files?.[0];
     if (!file) return;
 
+    if (!conversationId) {
+      toast.error("You need an active conversation before uploading files.");
+      event.target.value = '';
+      return;
+    }
+
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast.error('File size must be less than 10MB');

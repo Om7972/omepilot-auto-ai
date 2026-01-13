@@ -58,7 +58,10 @@ serve(async (req) => {
 
     const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
     if (!OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "OPENAI_API_KEY is missing in project secrets" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const apiForm = new FormData();
