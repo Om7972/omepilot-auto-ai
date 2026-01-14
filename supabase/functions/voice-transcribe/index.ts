@@ -140,26 +140,41 @@ serve(async (req) => {
         const errorText = await response.text();
         console.error("OpenAI transcription error:", response.status, errorText);
 
-        let errorMessage = "Transcription failed";
-        if (response.status === 401) {
-          errorMessage = "Invalid OpenAI API key. Please check your OPENAI_API_KEY in Supabase secrets.";
-        } else if (response.status === 429) {
-          errorMessage = "OpenAI rate limit exceeded. Please try again in a moment.";
-        } else if (response.status === 402) {
-          errorMessage = "OpenAI payment required. Please add credits to your OpenAI account.";
+        // Include original OpenAI error body for debugging (may contain helpful details)
+        let details: any = null;
+        try {
+          details = JSON.parse(errorText);
+        } catch {
+          details = errorText;
         }
 
-        // Include original OpenAI error body for debugging (may contain helpful details)
-        let details = null;
-        try { details = JSON.parse(errorText); } catch { details = errorText; }
+        const openAiCode = details?.error?.code;
+        const openAiType = details?.error?.type;
 
-        return new Response(
-          JSON.stringify({ error: errorMessage, details }),
-          {
-            status: response.status >= 500 ? 500 : response.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        let errorMessage = "Transcription failed";
+        let mappedStatus = response.status;
+
+        if (response.status === 401 || openAiCode === "invalid_api_key") {
+          errorMessage =
+            "Invalid OpenAI API key. Please check your OPENAI_API_KEY in backend secrets.";
+        } else if (response.status === 429) {
+          // OpenAI uses 429 both for rate limits and for insufficient quota.
+          if (openAiCode === "insufficient_quota" || openAiType === "insufficient_quota") {
+            mappedStatus = 402;
+            errorMessage =
+              "OpenAI quota exceeded. Please add credits to your OpenAI account (billing) and try again.";
+          } else {
+            errorMessage = "OpenAI rate limit exceeded. Please try again in a moment.";
           }
-        );
+        } else if (response.status === 402) {
+          errorMessage =
+            "OpenAI payment required. Please add credits to your OpenAI account.";
+        }
+
+        return new Response(JSON.stringify({ error: errorMessage, details }), {
+          status: mappedStatus,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
 
       const result = await response.json();
