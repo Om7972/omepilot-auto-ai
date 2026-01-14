@@ -518,12 +518,36 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           });
 
           if (!res.ok) {
+            const contentType = res.headers.get("content-type") || "";
             const txt = await res.text();
-            console.error("Voice transcription function error:", res.status, txt);
+
+            let parsed: any = null;
+            if (contentType.includes("application/json")) {
+              try {
+                parsed = JSON.parse(txt);
+              } catch {
+                // ignore
+              }
+            }
+
+            const serverError = parsed?.error || parsed?.message;
+            console.error(
+              "Voice transcription function error:",
+              res.status,
+              serverError ?? txt
+            );
+
+            const errMsg = (serverError ?? txt ?? "").toString();
+
             if (res.status === 401) throw new Error("Please log in to use voice input.");
-            if (res.status === 402) throw new Error("OpenAI payment required. Please add credits to your OpenAI account.");
+            if (res.status === 402 || errMsg.toLowerCase().includes("insufficient_quota")) {
+              throw new Error(
+                "OpenAI quota exceeded. Please add credits to your OpenAI account and try again."
+              );
+            }
             if (res.status === 429) throw new Error("Rate limit exceeded. Please try again in a moment.");
-            throw new Error(txt || `Transcription failed (${res.status})`);
+
+            throw new Error(errMsg || `Transcription failed (${res.status})`);
           }
 
           const data = await res.json();
