@@ -5,22 +5,17 @@ import { Paperclip, Loader2, FileText, Image as ImageIcon, File } from "lucide-r
 import { toast } from "sonner";
 
 interface FileUploadProps {
-  conversationId: string;
+  conversationId?: string | null;
   onFileUploaded?: (file: any) => void;
+  onCreateConversation?: (conversationId: string) => void;
 }
 
-export const FileUpload = ({ conversationId, onFileUploaded }: FileUploadProps) => {
+export const FileUpload = ({ conversationId, onFileUploaded, onCreateConversation }: FileUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (!conversationId) {
-      toast.error("You need an active conversation before uploading files.");
-      event.target.value = '';
-      return;
-    }
 
     // Check file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
@@ -33,6 +28,28 @@ export const FileUpload = ({ conversationId, onFileUploaded }: FileUploadProps) 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      // Auto-create conversation if none exists
+      let activeConversationId = conversationId;
+      if (!activeConversationId || activeConversationId.trim() === '') {
+        toast.info('Creating new conversation for file upload...');
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            user_id: user.id,
+            title: `File: ${file.name}`,
+          })
+          .select()
+          .single();
+
+        if (convError) throw new Error('Failed to create conversation: ' + convError.message);
+        activeConversationId = newConv.id;
+        
+        // Notify parent component about new conversation
+        if (onCreateConversation) {
+          onCreateConversation(activeConversationId);
+        }
+      }
 
       // Upload to storage
       const fileExt = file.name.split('.').pop();
@@ -49,7 +66,7 @@ export const FileUpload = ({ conversationId, onFileUploaded }: FileUploadProps) 
         .from('documents')
         .insert({
           user_id: user.id,
-          conversation_id: conversationId,
+          conversation_id: activeConversationId,
           filename: file.name,
           file_type: file.type,
           file_size: file.size,

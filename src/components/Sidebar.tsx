@@ -69,17 +69,37 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   const loadUserInfo = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserEmail(user.email || "");
-      const { data } = await supabase
+    if (!user) return;
+
+    setUserEmail(user.email || "");
+
+    // Try to get existing profile without throwing 406 when missing
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading profile:', error);
+    }
+
+    if (!data) {
+      // Profile doesn't exist yet, create a simple default one
+      const username = user.email?.split('@')[0] || 'User';
+      const { data: newProfile, error: insertError } = await supabase
         .from('profiles')
+        .insert({ id: user.id, username })
         .select('username')
-        .eq('id', user.id)
         .single();
-      
-      if (data?.username) {
-        setUserName(data.username);
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+      } else if (newProfile?.username) {
+        setUserName(newProfile.username);
       }
+    } else if (data.username) {
+      setUserName(data.username);
     }
   };
 

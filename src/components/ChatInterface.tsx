@@ -262,8 +262,10 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      // Check for valid session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
         toast.error('Please log in to send messages');
         setInput(messageText); // Restore input
         setIsLoading(false);
@@ -308,6 +310,19 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
 
       if (error) {
         console.error('Edge function error:', error);
+        
+        // Handle 401 Unauthorized - user needs to log in again
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          toast.error('Session expired. Please log in again.', {
+            duration: 5000,
+          });
+          // Optionally redirect to auth page
+          // navigate('/auth');
+          setInput(messageText);
+          setIsLoading(false);
+          return;
+        }
+        
         if (error.message?.includes('500')) {
           toast.error('AI service configuration error. Please check that API keys are set in Supabase dashboard.', {
             duration: 5000,
@@ -328,7 +343,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       console.error('Error sending message:', error);
       
       // Provide helpful error messages
-      if (error.message?.includes('500') || error.message?.includes('Edge Function')) {
+      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+        toast.error('Session expired. Please log in again.');
+      } else if (error.message?.includes('500') || error.message?.includes('Edge Function')) {
         toast.error('AI service temporarily unavailable. Please try again.');
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
         toast.error('Network error. Please check your internet connection.');
@@ -486,14 +503,37 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           const form = new FormData();
           form.append("audio", blob, "audio.webm");
 
-          const { data, error } = await supabase.functions.invoke(
-            "voice-transcribe",
-            {
-              body: form as any,
-            }
-          );
+          // Use direct fetch to the edge function so multipart/form-data is preserved
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) throw new Error("Please log in to use voice input.");
 
-          if (error) throw error;
+          const fnUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/voice-transcribe`;
+
+          const res = await fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${session.access_token}`,
+            },
+            body: form,
+          });
+
+          if (!res.ok) {
+            const txt = await res.text();
+            console.error("Voice transcription function error:", res.status, txt);
+            if (res.status === 401) throw new Error("Please log in to use voice input.");
+            if (res.status === 402) throw new Error("OpenAI payment required. Please add credits to your OpenAI account.");
+            if (res.status === 429) throw new Error("Rate limit exceeded. Please try again in a moment.");
+            throw new Error(txt || `Transcription failed (${res.status})`);
+          }
+
+          const data = await res.json();
+
+          if (!data) throw new Error("Transcription failed: empty response");
+
+          // Check if response has error field (even with 200 status)
+          if (data && typeof data === 'object' && 'error' in data) {
+            throw new Error((data as any).error);
+          }
 
           const text = (data as any)?.text?.toString?.() ?? "";
           if (!text.trim()) {
@@ -504,11 +544,24 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           setInput((prev) => prev + (prev ? " " : "") + text.trim());
           toast.success("Voice added", { duration: 1200 });
         } catch (err: any) {
-          toast.error(
-            err?.message?.includes("Unauthorized")
-              ? "Please log in to use voice input."
-              : "Transcription failed. Please try again."
-          );
+          console.error("Voice transcription error:", err);
+          const errorMessage = err?.message || err?.error || "Transcription failed";
+          
+          if (errorMessage.includes("Unauthorized") || errorMessage.includes("log in")) {
+            toast.error("Please log in to use voice input.");
+          } else if (errorMessage.includes("OPENAI_API_KEY") || errorMessage.includes("not configured") || errorMessage.includes("API key")) {
+            toast.error("Voice transcription requires OpenAI API key. Please add OPENAI_API_KEY to Supabase secrets.", {
+              duration: 6000,
+            });
+          } else if (errorMessage.includes("rate limit")) {
+            toast.error("Rate limit exceeded. Please try again in a moment.");
+          } else if (errorMessage.includes("payment required") || errorMessage.includes("credits")) {
+            toast.error("OpenAI account needs credits. Please add funds to your OpenAI account.");
+          } else {
+            toast.error(errorMessage.includes("temporarily unavailable") || errorMessage.includes("try again")
+              ? errorMessage 
+              : `Voice transcription failed: ${errorMessage}`);
+          }
         } finally {
           setIsTranscribing(false);
         }
@@ -874,7 +927,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                     setSelectedModel(persona);
                   }}
                 />
-                <FileUpload conversationId={conversationId || ''} />
+                <FileUpload 
+                  conversationId={conversationId} 
+                  onCreateConversation={(newConvId) => {
+                    navigate(`/chat/${newConvId}`);
+                  }}
+                />
               </div>
             </div>
 
