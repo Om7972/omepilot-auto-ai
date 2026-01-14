@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin, Volume2, VolumeX } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useTTS } from "@/hooks/useTTS";
 
 interface Message {
   id: string;
@@ -71,6 +72,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -79,6 +81,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const typingChannelRef = useRef<any>(null);
   const typingTimeoutRef = useRef<any>(null);
+  
+  // TTS Hook
+  const tts = useTTS();
 
   const handleCollaborativeChange = (enabled: boolean) => {
     setIsCollaborative(enabled);
@@ -887,7 +892,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                     >
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
-                    {/* Reactions, Pin, and Feedback */}
+                    {/* Reactions, Pin, TTS, and Feedback */}
                     <div className="flex items-center gap-1 mt-1">
                       <MessageReactions messageId={message.id} />
                       <Tooltip>
@@ -904,7 +909,41 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                         <TooltipContent>Pin message</TooltipContent>
                       </Tooltip>
                       {message.role === 'assistant' && (
-                        <MessageFeedback messageId={message.id} />
+                        <>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  if (speakingMessageId === message.id && tts.isPlaying) {
+                                    tts.stop();
+                                    setSpeakingMessageId(null);
+                                  } else {
+                                    setSpeakingMessageId(message.id);
+                                    tts.speak(message.content);
+                                  }
+                                }}
+                                disabled={tts.isLoading}
+                                className={`h-7 w-7 rounded-full transition-opacity ${
+                                  speakingMessageId === message.id && tts.isPlaying 
+                                    ? 'opacity-100 bg-primary/10 text-primary' 
+                                    : 'opacity-0 group-hover:opacity-100'
+                                }`}
+                              >
+                                {speakingMessageId === message.id && tts.isPlaying ? (
+                                  <VolumeX className="h-3.5 w-3.5" />
+                                ) : (
+                                  <Volume2 className="h-3.5 w-3.5 text-muted-foreground" />
+                                )}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              {speakingMessageId === message.id && tts.isPlaying ? "Stop speaking" : "Read aloud"}
+                            </TooltipContent>
+                          </Tooltip>
+                          <MessageFeedback messageId={message.id} />
+                        </>
                       )}
                     </div>
                   </div>

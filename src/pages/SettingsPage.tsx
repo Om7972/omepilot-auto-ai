@@ -552,9 +552,9 @@ export default function SettingsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Mic className="h-5 w-5" />
-                  Voice Settings
+                  Voice Input Settings
                 </CardTitle>
-                <CardDescription>Configure voice input preferences</CardDescription>
+                <CardDescription>Configure voice input (speech-to-text) preferences</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -568,14 +568,40 @@ export default function SettingsPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="browser">Browser Speech Recognition</SelectItem>
-                      <SelectItem value="server">Server Transcription (More reliable)</SelectItem>
+                      <SelectItem value="server">Server Transcription (Groq Whisper)</SelectItem>
                     </SelectContent>
                   </Select>
                   <p className="text-xs text-muted-foreground">
-                    Browser mode is faster but may not work in all environments. 
-                    Server mode is more reliable but requires recording.
+                    <strong>Browser mode:</strong> Fast, works offline, uses your browser's built-in speech recognition. May not work in all browsers or embedded views.
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>Server mode:</strong> More accurate, records audio and transcribes using Groq Whisper AI. Requires internet connection.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Volume2 className="h-5 w-5" />
+                  Text-to-Speech Settings
+                </CardTitle>
+                <CardDescription>Configure AI voice output (powered by ElevenLabs)</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Read Aloud</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Click the speaker icon on AI responses to have them read aloud
+                    </p>
+                  </div>
+                  <Badge variant="secondary">ElevenLabs</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Hover over any AI response and click the 🔊 speaker icon to hear it read aloud using natural AI voice synthesis.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
