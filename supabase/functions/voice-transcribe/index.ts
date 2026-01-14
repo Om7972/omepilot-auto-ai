@@ -13,15 +13,6 @@ serve(async (req) => {
   }
 
   try {
-    // Debug: log incoming request headers (avoid logging sensitive tokens in production)
-    try {
-      const headersObj: Record<string, string> = {};
-      for (const [k, v] of req.headers) headersObj[k] = v;
-      console.info("voice-transcribe request headers:", headersObj);
-    } catch (hErr) {
-      console.warn("Failed to log request headers", hErr);
-    }
-
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
@@ -34,62 +25,60 @@ serve(async (req) => {
 
     const {
       data: { user },
-      error: authError
+      error: authError,
     } = await supabaseClient.auth.getUser();
 
     if (authError || !user) {
       console.error("Auth error:", authError);
-      return new Response(JSON.stringify({ error: "Unauthorized. Please log in again." }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Unauthorized. Please log in again." }),
+        {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // Try to parse FormData - be flexible with content-type
+    // Parse FormData
     let form: FormData;
     let audio: File | null = null;
 
     try {
       form = await req.formData();
       audio = form.get("audio") as File | null;
-      // Log file metadata for debugging
+
       if (audio) {
-        try {
-          console.info("voice-transcribe received file:", {
-            name: audio.name,
-            type: audio.type,
-            size: audio.size,
-          });
-        } catch (mErr) {
-          console.warn("Could not read audio metadata", mErr);
-        }
+        console.info("voice-transcribe received file:", {
+          name: audio.name,
+          type: audio.type,
+          size: audio.size,
+        });
       }
     } catch (formError) {
       console.error("FormData parsing error:", formError);
-      // Try alternative parsing if FormData fails
-      const contentType = req.headers.get("content-type") || "";
-      if (!contentType.includes("multipart") && !contentType.includes("form-data")) {
-        return new Response(
-          JSON.stringify({ error: "Invalid request format. Expected multipart/form-data." }),
-          {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          }
-        );
-      }
-      // If we get here, try to read the body differently
-      throw new Error("Could not parse FormData");
+      return new Response(
+        JSON.stringify({
+          error: "Invalid request format. Expected multipart/form-data.",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     if (!audio || !(audio instanceof File)) {
       console.error("Audio file not found in request");
-      return new Response(JSON.stringify({ error: "No audio file provided in request" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "No audio file provided in request" }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
-    // Validate audio file size (max 25MB for Whisper)
+    // Validate audio file size (max 25MB)
     if (audio.size > 25 * 1024 * 1024) {
       return new Response(
         JSON.stringify({ error: "Audio file too large. Maximum size is 25MB." }),
@@ -100,47 +89,43 @@ serve(async (req) => {
       );
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    
-    if (!OPENAI_API_KEY) {
+    const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+
+    if (!GROQ_API_KEY) {
       return new Response(
-        JSON.stringify({ 
-          error: "OPENAI_API_KEY is not configured. Please add it to Supabase project secrets (Settings → Vault). Voice transcription requires OpenAI Whisper API."
+        JSON.stringify({
+          error:
+            "GROQ_API_KEY is not configured. Please add it to backend secrets.",
         }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
       );
     }
 
     try {
       const apiForm = new FormData();
       apiForm.append("file", audio, audio.name || "audio.webm");
-      apiForm.append("model", "whisper-1");
+      apiForm.append("model", "whisper-large-v3");
 
-      let response;
-      try {
-        response = await fetch(
-          "https://api.openai.com/v1/audio/transcriptions",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${OPENAI_API_KEY}`,
-            },
-            body: apiForm,
-          }
-        );
-      } catch (fetchErr: any) {
-        console.error("OpenAI fetch error:", fetchErr);
-        return new Response(
-          JSON.stringify({ error: "Transcription service fetch error", details: fetchErr?.message }),
-          { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      console.info("Calling Groq Whisper API...");
+
+      const response = await fetch(
+        "https://api.groq.com/openai/v1/audio/transcriptions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${GROQ_API_KEY}`,
+          },
+          body: apiForm,
+        }
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("OpenAI transcription error:", response.status, errorText);
+        console.error("Groq transcription error:", response.status, errorText);
 
-        // Include original OpenAI error body for debugging (may contain helpful details)
         let details: any = null;
         try {
           details = JSON.parse(errorText);
@@ -148,31 +133,19 @@ serve(async (req) => {
           details = errorText;
         }
 
-        const openAiCode = details?.error?.code;
-        const openAiType = details?.error?.type;
-
         let errorMessage = "Transcription failed";
-        let mappedStatus = response.status;
 
-        if (response.status === 401 || openAiCode === "invalid_api_key") {
+        if (response.status === 401) {
           errorMessage =
-            "Invalid OpenAI API key. Please check your OPENAI_API_KEY in backend secrets.";
+            "Invalid Groq API key. Please check your GROQ_API_KEY in backend secrets.";
         } else if (response.status === 429) {
-          // OpenAI uses 429 both for rate limits and for insufficient quota.
-          if (openAiCode === "insufficient_quota" || openAiType === "insufficient_quota") {
-            mappedStatus = 402;
-            errorMessage =
-              "OpenAI quota exceeded. Please add credits to your OpenAI account (billing) and try again.";
-          } else {
-            errorMessage = "OpenAI rate limit exceeded. Please try again in a moment.";
-          }
-        } else if (response.status === 402) {
-          errorMessage =
-            "OpenAI payment required. Please add credits to your OpenAI account.";
+          errorMessage = "Rate limit exceeded. Please try again in a moment.";
+        } else if (response.status === 413) {
+          errorMessage = "Audio file too large for transcription.";
         }
 
         return new Response(JSON.stringify({ error: errorMessage, details }), {
-          status: mappedStatus,
+          status: response.status >= 500 ? 500 : response.status,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -180,9 +153,13 @@ serve(async (req) => {
       const result = await response.json();
       const transcribedText = result.text ?? "";
 
+      console.info("Transcription successful, length:", transcribedText.length);
+
       if (!transcribedText.trim()) {
         return new Response(
-          JSON.stringify({ error: "No speech detected in the audio. Please try speaking again." }),
+          JSON.stringify({
+            error: "No speech detected in the audio. Please try speaking again.",
+          }),
           {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -196,8 +173,8 @@ serve(async (req) => {
     } catch (error: any) {
       console.error("Voice transcription error:", error);
       return new Response(
-        JSON.stringify({ 
-          error: error?.message || "Transcription service error. Please try again."
+        JSON.stringify({
+          error: error?.message || "Transcription service error. Please try again.",
         }),
         {
           status: 500,
@@ -207,22 +184,13 @@ serve(async (req) => {
     }
   } catch (error: any) {
     console.error("voice-transcribe error:", error);
-    const errorMessage = error?.message || "Unknown error occurred";
-    const errorDetails = error?.stack || "";
-    
-    // Log full error for debugging
-    console.error("Full error details:", {
-      message: errorMessage,
-      stack: errorDetails,
-      name: error?.name
-    });
-    
     return new Response(
-      JSON.stringify({ 
-        error: errorMessage.includes("FormData") || errorMessage.includes("parse")
-          ? "Failed to process audio file. Please try recording again."
-          : errorMessage || "Voice transcription service error. Please try again."
-      }), 
+      JSON.stringify({
+        error:
+          error?.message?.includes("FormData") || error?.message?.includes("parse")
+            ? "Failed to process audio file. Please try recording again."
+            : error?.message || "Voice transcription service error. Please try again.",
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
