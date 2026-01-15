@@ -195,6 +195,7 @@ export type Database = {
       }
       messages: {
         Row: {
+          attachments: Json | null
           content: string
           conversation_id: string
           created_at: string
@@ -206,6 +207,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          attachments?: Json | null
           content: string
           conversation_id: string
           created_at?: string
@@ -217,6 +219,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          attachments?: Json | null
           content?: string
           conversation_id?: string
           created_at?: string
@@ -236,6 +239,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string | null
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string | null
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       personas: {
         Row: {
@@ -311,17 +347,26 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
           created_at: string
+          full_name: string | null
           id: string
           username: string | null
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          full_name?: string | null
           id: string
           username?: string | null
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
           created_at?: string
+          full_name?: string | null
           id?: string
           username?: string | null
         }
@@ -536,6 +581,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_stats: {
         Row: {
           badges: Json
@@ -599,6 +665,13 @@ export type Database = {
         Returns: Json
       }
       generate_share_token: { Args: never; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       is_conversation_member: {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
@@ -607,9 +680,19 @@ export type Database = {
         Args: { _conversation_id: string; _user_id: string }
         Returns: boolean
       }
+      send_notification: {
+        Args: {
+          _data?: Json
+          _message?: string
+          _title: string
+          _type: string
+          _user_id: string
+        }
+        Returns: string
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -736,6 +819,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
