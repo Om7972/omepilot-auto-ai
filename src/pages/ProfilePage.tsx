@@ -1,22 +1,24 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/Sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Progress } from '@/components/ui/progress';
 import { 
   Trophy, Flame, Star, MessageSquare, Calendar, Clock, 
   Share2, Copy, Check, Edit2, Camera, Award, Target,
-  TrendingUp, Zap, Brain, BookOpen
+  TrendingUp, Zap, Brain, BookOpen, Loader2
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/contexts/AuthContext';
+import { useFileUpload } from '@/hooks/useFileUpload';
 
 interface UserStats {
   total_points: number;
@@ -51,10 +53,15 @@ const BADGE_INFO: Record<string, { icon: React.ElementType; label: string; color
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { user, profile, updateProfile, refreshProfile } = useAuth();
+  const { uploadFile, uploading, progress } = useFileUpload();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [userName, setUserName] = useState('User');
   const [userEmail, setUserEmail] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [memberSince, setMemberSince] = useState<Date | null>(null);
@@ -63,38 +70,33 @@ export default function ProfilePage() {
   const [newUsername, setNewUsername] = useState('');
 
   useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    if (!user) {
       navigate('/auth');
       return;
     }
-    await loadProfile(session.user.id);
-    await loadStats(session.user.id);
-    await loadActivities(session.user.id);
+    loadData();
+  }, [user]);
+
+  useEffect(() => {
+    if (profile) {
+      setUserName(profile.username || 'User');
+      setNewUsername(profile.username || '');
+      setAvatarUrl(profile.avatar_url);
+    }
+  }, [profile]);
+
+  const loadData = async () => {
+    if (!user) return;
+    
+    setUserEmail(user.email || '');
+    setMemberSince(new Date(user.created_at));
+    
+    await Promise.all([
+      loadStats(user.id),
+      loadActivities(user.id),
+    ]);
+    
     setIsLoading(false);
-  };
-
-  const loadProfile = async (userId: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      setUserEmail(user.email || '');
-      setMemberSince(new Date(user.created_at));
-    }
-
-    const { data } = await supabase
-      .from('profiles')
-      .select('username, created_at')
-      .eq('id', userId)
-      .single();
-
-    if (data?.username) {
-      setUserName(data.username);
-      setNewUsername(data.username);
-    }
   };
 
   const loadStats = async (userId: string) => {
@@ -113,7 +115,6 @@ export default function ProfilePage() {
   };
 
   const loadActivities = async (userId: string) => {
-    // Get recent messages
     const { data: messages } = await supabase
       .from('messages')
       .select('id, content, created_at, conversation_id')
@@ -121,7 +122,6 @@ export default function ProfilePage() {
       .order('created_at', { ascending: false })
       .limit(20);
 
-    // Get conversations
     const { data: conversations } = await supabase
       .from('conversations')
       .select('id, title, created_at')
@@ -149,33 +149,41 @@ export default function ProfilePage() {
       });
     });
 
-    // Sort by date
     acts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     setActivities(acts.slice(0, 30));
   };
 
-  const updateUsername = async () => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const result = await uploadFile(file, {
+      bucket: 'avatars',
+      maxSizeMB: 5,
+      allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
+    });
+
+    if (result) {
+      await updateProfile({ avatar_url: result.publicUrl });
+      setAvatarUrl(result.publicUrl);
+    }
+  };
+
+  const triggerAvatarUpload = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleUpdateUsername = async () => {
     if (!newUsername.trim()) {
       toast.error('Username cannot be empty');
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: newUsername.trim() })
-      .eq('id', user.id);
-
-    if (error) {
-      toast.error('Failed to update username');
-      return;
+    const { error } = await updateProfile({ username: newUsername.trim() });
+    if (!error) {
+      setUserName(newUsername.trim());
+      setIsEditing(false);
     }
-
-    setUserName(newUsername.trim());
-    setIsEditing(false);
-    toast.success('Username updated!');
   };
 
   const shareProfile = () => {
@@ -218,43 +226,57 @@ export default function ProfilePage() {
         onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)} 
       />
       <div className="flex-1 overflow-auto bg-background">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-4 md:p-6">
           {/* Profile Header */}
           <Card className="mb-6 overflow-hidden">
-            <div className="h-24 bg-gradient-to-r from-primary via-primary/80 to-accent" />
+            <div className="h-20 md:h-24 bg-gradient-to-r from-primary via-primary/80 to-accent" />
             <CardContent className="relative pt-0 pb-6">
-              <div className="flex flex-col md:flex-row items-start md:items-end gap-4 -mt-12">
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-10 sm:-mt-12">
                 <div className="relative">
-                  <Avatar className="h-24 w-24 border-4 border-background shadow-lg">
-                    <AvatarFallback className="text-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+                  <Avatar className="h-20 w-20 sm:h-24 sm:w-24 border-4 border-background shadow-lg">
+                    <AvatarImage src={avatarUrl || undefined} alt={userName} />
+                    <AvatarFallback className="text-2xl sm:text-3xl bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
                       {userName.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <Button
                     size="icon"
                     variant="secondary"
-                    className="absolute bottom-0 right-0 h-8 w-8 rounded-full shadow-md"
+                    className="absolute bottom-0 right-0 h-7 w-7 sm:h-8 sm:w-8 rounded-full shadow-md"
+                    onClick={triggerAvatarUpload}
+                    disabled={uploading}
                   >
-                    <Camera className="h-4 w-4" />
+                    {uploading ? (
+                      <Loader2 className="h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                    ) : (
+                      <Camera className="h-3 w-3 sm:h-4 sm:w-4" />
+                    )}
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarUpload}
+                    className="hidden"
+                  />
                 </div>
 
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
                     {isEditing ? (
                       <div className="flex items-center gap-2">
                         <Input
                           value={newUsername}
                           onChange={(e) => setNewUsername(e.target.value)}
-                          className="h-8 w-48"
+                          className="h-8 w-40 sm:w-48"
                           placeholder="Username"
                         />
-                        <Button size="sm" onClick={updateUsername}>Save</Button>
+                        <Button size="sm" onClick={handleUpdateUsername}>Save</Button>
                         <Button size="sm" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
                       </div>
                     ) : (
                       <>
-                        <h1 className="text-2xl font-bold">{userName}</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold truncate">{userName}</h1>
                         <Button 
                           size="icon" 
                           variant="ghost" 
@@ -266,7 +288,7 @@ export default function ProfilePage() {
                       </>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground">{userEmail}</p>
+                  <p className="text-sm text-muted-foreground truncate">{userEmail}</p>
                   {memberSince && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                       <Calendar className="h-3 w-3" />
@@ -275,58 +297,64 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                <Button onClick={shareProfile} variant="outline" className="gap-2">
+                <Button onClick={shareProfile} variant="outline" size="sm" className="gap-2 mt-2 sm:mt-0">
                   {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-                  {copied ? 'Copied!' : 'Share Profile'}
+                  <span className="hidden sm:inline">{copied ? 'Copied!' : 'Share'}</span>
                 </Button>
               </div>
+
+              {uploading && (
+                <div className="mt-4">
+                  <Progress value={progress} className="h-1" />
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <Card className="p-4 text-center bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/20">
-              <Flame className="h-6 w-6 mx-auto mb-2 text-orange-500" />
-              <div className="text-2xl font-bold">{stats?.current_streak || 0}</div>
-              <div className="text-xs text-muted-foreground">Day Streak</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <Card className="p-3 md:p-4 text-center bg-gradient-to-br from-orange-500/10 to-transparent border-orange-500/20">
+              <Flame className="h-5 w-5 md:h-6 md:w-6 mx-auto mb-2 text-orange-500" />
+              <div className="text-xl md:text-2xl font-bold">{stats?.current_streak || 0}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Day Streak</div>
             </Card>
-            <Card className="p-4 text-center bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
-              <Star className="h-6 w-6 mx-auto mb-2 text-primary" />
-              <div className="text-2xl font-bold">{stats?.total_points || 0}</div>
-              <div className="text-xs text-muted-foreground">Total XP</div>
+            <Card className="p-3 md:p-4 text-center bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+              <Star className="h-5 w-5 md:h-6 md:w-6 mx-auto mb-2 text-primary" />
+              <div className="text-xl md:text-2xl font-bold">{stats?.total_points || 0}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Total XP</div>
             </Card>
-            <Card className="p-4 text-center bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
-              <MessageSquare className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-              <div className="text-2xl font-bold">{stats?.messages_sent || 0}</div>
-              <div className="text-xs text-muted-foreground">Messages</div>
+            <Card className="p-3 md:p-4 text-center bg-gradient-to-br from-blue-500/10 to-transparent border-blue-500/20">
+              <MessageSquare className="h-5 w-5 md:h-6 md:w-6 mx-auto mb-2 text-blue-500" />
+              <div className="text-xl md:text-2xl font-bold">{stats?.messages_sent || 0}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Messages</div>
             </Card>
-            <Card className="p-4 text-center bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
-              <Trophy className="h-6 w-6 mx-auto mb-2 text-green-500" />
-              <div className="text-2xl font-bold">{stats?.longest_streak || 0}</div>
-              <div className="text-xs text-muted-foreground">Best Streak</div>
+            <Card className="p-3 md:p-4 text-center bg-gradient-to-br from-green-500/10 to-transparent border-green-500/20">
+              <Trophy className="h-5 w-5 md:h-6 md:w-6 mx-auto mb-2 text-green-500" />
+              <div className="text-xl md:text-2xl font-bold">{stats?.longest_streak || 0}</div>
+              <div className="text-[10px] md:text-xs text-muted-foreground">Best Streak</div>
             </Card>
           </div>
 
           <Tabs defaultValue="badges" className="space-y-4">
-            <TabsList className="w-full justify-start">
+            <TabsList className="w-full justify-start overflow-x-auto">
               <TabsTrigger value="badges" className="gap-2">
                 <Award className="h-4 w-4" />
-                Badges
+                <span className="hidden sm:inline">Badges</span>
               </TabsTrigger>
               <TabsTrigger value="activity" className="gap-2">
                 <Clock className="h-4 w-4" />
-                Activity
+                <span className="hidden sm:inline">Activity</span>
               </TabsTrigger>
               <TabsTrigger value="stats" className="gap-2">
                 <TrendingUp className="h-4 w-4" />
-                Stats
+                <span className="hidden sm:inline">Stats</span>
               </TabsTrigger>
             </TabsList>
 
             <TabsContent value="badges">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <Award className="h-5 w-5" />
                     Earned Badges
                   </CardTitle>
@@ -336,7 +364,7 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                   {stats?.badges && stats.badges.length > 0 ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
                       {stats.badges.map((badge) => {
                         const info = BADGE_INFO[badge] || { 
                           icon: Trophy, 
@@ -347,12 +375,12 @@ export default function ProfilePage() {
                         return (
                           <div 
                             key={badge}
-                            className="flex flex-col items-center p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                            className="flex flex-col items-center p-3 md:p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                           >
-                            <div className={`p-3 rounded-full ${info.color} text-white mb-2`}>
-                              <Icon className="h-6 w-6" />
+                            <div className={`p-2 md:p-3 rounded-full ${info.color} text-white mb-2`}>
+                              <Icon className="h-5 w-5 md:h-6 md:w-6" />
                             </div>
-                            <span className="text-sm font-medium text-center">{info.label}</span>
+                            <span className="text-xs md:text-sm font-medium text-center">{info.label}</span>
                           </div>
                         );
                       })}
@@ -361,14 +389,14 @@ export default function ProfilePage() {
                     <div className="text-center py-8 text-muted-foreground">
                       <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30" />
                       <p>No badges earned yet</p>
-                      <p className="text-sm mt-1">Keep using Omepilot to earn badges!</p>
+                      <p className="text-sm mt-1">Keep using OmePilot to earn badges!</p>
                     </div>
                   )}
 
                   {/* Locked Badges Preview */}
                   <div className="mt-6 pt-6 border-t">
                     <h4 className="text-sm font-medium text-muted-foreground mb-4">Badges to Unlock</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
                       {Object.entries(BADGE_INFO)
                         .filter(([key]) => !stats?.badges?.includes(key))
                         .slice(0, 4)
@@ -377,12 +405,12 @@ export default function ProfilePage() {
                           return (
                             <div 
                               key={key}
-                              className="flex flex-col items-center p-4 rounded-lg bg-muted/30 opacity-50"
+                              className="flex flex-col items-center p-3 md:p-4 rounded-lg bg-muted/30 opacity-50"
                             >
-                              <div className="p-3 rounded-full bg-muted text-muted-foreground mb-2">
-                                <Icon className="h-6 w-6" />
+                              <div className="p-2 md:p-3 rounded-full bg-muted text-muted-foreground mb-2">
+                                <Icon className="h-5 w-5 md:h-6 md:w-6" />
                               </div>
-                              <span className="text-sm text-center text-muted-foreground">{info.label}</span>
+                              <span className="text-xs md:text-sm text-center text-muted-foreground">{info.label}</span>
                             </div>
                           );
                         })}
@@ -395,7 +423,7 @@ export default function ProfilePage() {
             <TabsContent value="activity">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <Clock className="h-5 w-5" />
                     Recent Activity
                   </CardTitle>
@@ -404,20 +432,20 @@ export default function ProfilePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ScrollArea className="h-[400px] pr-4">
+                  <ScrollArea className="h-[300px] md:h-[400px] pr-4">
                     {activities.length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3 md:space-y-4">
                         {activities.map((activity) => (
                           <div 
                             key={activity.id}
-                            className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                            className="flex items-start gap-3 p-2 md:p-3 rounded-lg hover:bg-muted/50 transition-colors"
                           >
                             <div className="flex-shrink-0 mt-0.5">
                               {getActivityIcon(activity.type)}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm">{activity.description}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">
+                              <p className="text-xs md:text-sm">{activity.description}</p>
+                              <p className="text-[10px] md:text-xs text-muted-foreground mt-0.5">
                                 {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
                               </p>
                             </div>
@@ -439,7 +467,7 @@ export default function ProfilePage() {
             <TabsContent value="stats">
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
+                  <CardTitle className="flex items-center gap-2 text-lg">
                     <TrendingUp className="h-5 w-5" />
                     Detailed Statistics
                   </CardTitle>
@@ -448,60 +476,49 @@ export default function ProfilePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                  <div className="grid gap-4">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
                         <MessageSquare className="h-5 w-5 text-blue-500" />
-                        <span>Total Messages Sent</span>
+                        <span className="text-sm">Messages Sent</span>
                       </div>
-                      <span className="font-bold">{stats?.messages_sent || 0}</span>
+                      <span className="font-semibold">{stats?.messages_sent || 0}</span>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
                         <Brain className="h-5 w-5 text-purple-500" />
-                        <span>Conversations Started</span>
+                        <span className="text-sm">Conversations</span>
                       </div>
-                      <span className="font-bold">{stats?.conversations_created || 0}</span>
+                      <span className="font-semibold">{stats?.conversations_created || 0}</span>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
                         <Flame className="h-5 w-5 text-orange-500" />
-                        <span>Current Streak</span>
+                        <span className="text-sm">Current Streak</span>
                       </div>
-                      <span className="font-bold">{stats?.current_streak || 0} days</span>
+                      <span className="font-semibold">{stats?.current_streak || 0} days</span>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <Target className="h-5 w-5 text-red-500" />
-                        <span>Longest Streak</span>
+                        <Trophy className="h-5 w-5 text-green-500" />
+                        <span className="text-sm">Longest Streak</span>
                       </div>
-                      <span className="font-bold">{stats?.longest_streak || 0} days</span>
+                      <span className="font-semibold">{stats?.longest_streak || 0} days</span>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <Star className="h-5 w-5 text-yellow-500" />
-                        <span>Total Experience Points</span>
+                        <Star className="h-5 w-5 text-primary" />
+                        <span className="text-sm">Total XP</span>
                       </div>
-                      <span className="font-bold">{stats?.total_points || 0} XP</span>
+                      <span className="font-semibold">{stats?.total_points || 0}</span>
                     </div>
-                    <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center gap-3">
-                        <Award className="h-5 w-5 text-green-500" />
-                        <span>Badges Earned</span>
+                        <Award className="h-5 w-5 text-pink-500" />
+                        <span className="text-sm">Badges Earned</span>
                       </div>
-                      <span className="font-bold">{stats?.badges?.length || 0}</span>
+                      <span className="font-semibold">{stats?.badges?.length || 0}</span>
                     </div>
-                    {stats?.last_activity_date && (
-                      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-3">
-                          <Clock className="h-5 w-5 text-muted-foreground" />
-                          <span>Last Active</span>
-                        </div>
-                        <span className="font-bold">
-                          {formatDistanceToNow(new Date(stats.last_activity_date), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </CardContent>
               </Card>

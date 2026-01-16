@@ -20,6 +20,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTTS } from "@/hooks/useTTS";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Message {
   id: string;
@@ -52,10 +53,11 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const { conversationId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, profile } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [userName, setUserName] = useState("User");
+  const userName = profile?.username || user?.email?.split('@')[0] || "User";
   const [selectedModel, setSelectedModel] = useState('gemini');
   const [isListening, setIsListening] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
@@ -130,18 +132,8 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   };
 
   const loadUserName = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       setCurrentUserId(user.id);
-      const { data } = await supabase
-        .from('profiles')
-        .select('username')
-        .eq('id', user.id)
-        .single();
-      
-      if (data?.username) {
-        setUserName(data.username);
-      }
     }
   };
 
