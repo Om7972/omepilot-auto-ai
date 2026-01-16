@@ -690,6 +690,10 @@ export type Database = {
         }
         Returns: string
       }
+      shares_conversation_with: {
+        Args: { _profile_id: string; _viewer_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
