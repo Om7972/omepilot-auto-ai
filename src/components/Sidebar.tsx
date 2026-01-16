@@ -5,8 +5,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 import { ConversationItem } from "./ConversationItem";
 import { useTheme } from "./ThemeProvider";
@@ -18,14 +16,9 @@ import { SubscriptionDialog } from "./SubscriptionDialog";
 import { NotificationCenter } from "./NotificationCenter";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-
-interface Conversation {
-  id: string;
-  title: string;
-  created_at: string;
-  is_pinned?: boolean;
-  share_token?: string | null;
-}
+import { useAuth } from "@/contexts/AuthContext";
+import { useConversations } from "@/hooks/useConversations";
+import { toast } from "sonner";
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -35,9 +28,8 @@ interface SidebarProps {
 export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
-  const [userEmail, setUserEmail] = useState<string>("");
-  const [userName, setUserName] = useState<string>("User");
+  const { user, profile, signOut } = useAuth();
+  const { conversations, refresh: refreshConversations } = useConversations();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { theme, setTheme } = useTheme();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
@@ -46,103 +38,17 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
 
-
-  useEffect(() => {
-    loadConversations();
-    loadUserInfo();
-
-    const channel = supabase
-      .channel('conversations')
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'conversations'
-      }, () => {
-        loadConversations();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  const loadUserInfo = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    setUserEmail(user.email || "");
-
-    // Try to get existing profile without throwing 406 when missing
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error loading profile:', error);
-    }
-
-    if (!data) {
-      // Profile doesn't exist yet, create a simple default one
-      const username = user.email?.split('@')[0] || 'User';
-      const { data: newProfile, error: insertError } = await supabase
-        .from('profiles')
-        .insert({ id: user.id, username })
-        .select('username')
-        .single();
-
-      if (insertError) {
-        console.error('Error creating profile:', insertError);
-      } else if (newProfile?.username) {
-        setUserName(newProfile.username);
-      }
-    } else if (data.username) {
-      setUserName(data.username);
-    }
-  };
-
-  const loadConversations = async () => {
-    const { data: convData, error: convError } = await supabase
-      .from('conversations')
-      .select('*')
-      .order('updated_at', { ascending: false });
-
-    if (convError) {
-      console.error('Error loading conversations:', convError);
-      return;
-    }
-
-    const conversationsWithTitles = await Promise.all(
-      (convData || []).map(async (conv) => {
-        const { data: messages } = await supabase
-          .from('messages')
-          .select('content')
-          .eq('conversation_id', conv.id)
-          .eq('role', 'user')
-          .order('created_at', { ascending: true })
-          .limit(1);
-
-        if (messages && messages.length > 0) {
-          const firstMessage = messages[0].content;
-          return {
-            ...conv,
-            title: firstMessage.length > 35 
-              ? firstMessage.substring(0, 35) + '...' 
-              : firstMessage
-          };
-        }
-        return conv;
-      })
-    );
-
-    setConversations(conversationsWithTitles);
-  };
+  const userName = profile?.username || user?.email?.split('@')[0] || 'User';
+  const userEmail = user?.email || '';
 
   const handleNewChat = () => {
     navigate('/');
     toast.success('Starting new conversation');
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   useKeyboardShortcuts({
@@ -150,11 +56,6 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     onToggleSidebar: onToggle,
     onHelp: () => setShowShortcutsDialog(true),
   });
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
-  };
 
   const groupConversationsByDate = () => {
     const now = new Date();
@@ -202,7 +103,15 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
-  const ConversationGroup = ({ title, conversations, icon }: { title: string; conversations: Conversation[]; icon?: React.ReactNode }) => {
+  interface ConversationDisplay {
+    id: string;
+    title: string;
+    created_at: string;
+    is_pinned: boolean;
+    share_token: string | null;
+  }
+
+  const ConversationGroup = ({ title, conversations, icon }: { title: string; conversations: ConversationDisplay[]; icon?: React.ReactNode }) => {
     if (conversations.length === 0) return null;
     return (
       <div className="mb-2">
@@ -217,8 +126,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
             title={conv.title}
             isPinned={conv.is_pinned}
             shareToken={conv.share_token}
-            onDelete={loadConversations}
-            onUpdate={loadConversations}
+            onDelete={refreshConversations}
+            onUpdate={refreshConversations}
           />
         ))}
       </div>
