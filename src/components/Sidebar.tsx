@@ -13,7 +13,7 @@ import { AboutDialog } from "./AboutDialog";
 import { FeedbackDialog } from "./FeedbackDialog";
 import { HelpDialog } from "./HelpDialog";
 import { SubscriptionDialog } from "./SubscriptionDialog";
-import { NotificationCenter } from "./NotificationCenter";
+import { NotificationBell } from "./NotificationBell";
 import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAuth } from "@/contexts/AuthContext";
@@ -170,7 +170,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
                 </TooltipTrigger>
                 <TooltipContent side="right">New chat (Ctrl+N)</TooltipContent>
               </Tooltip>
-              <NotificationCenter />
+              <NotificationBell />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

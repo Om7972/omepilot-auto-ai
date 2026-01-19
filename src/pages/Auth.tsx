@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AuthError } from '@supabase/supabase-js';
+import { ArrowLeft, Mail } from "lucide-react";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 
 export default function Auth() {
@@ -16,16 +17,17 @@ export default function Auth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate('/');
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate('/');
@@ -43,13 +45,11 @@ export default function Auth() {
       return;
     }
 
-    // Basic email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
       toast.error('Please enter a valid email address');
       return;
     }
 
-    // Password strength validation
     if (password.length < 6) {
       toast.error('Password must be at least 6 characters long');
       return;
@@ -91,7 +91,6 @@ export default function Auth() {
       return;
     }
 
-    // Basic email validation
     if (!/\S+@\S+\.\S+/.test(email)) {
       toast.error('Please enter a valid email address');
       return;
@@ -114,7 +113,6 @@ export default function Auth() {
     } catch (error: unknown) {
       const authError = error as AuthError;
       console.error('Sign in error:', authError);
-      // Provide more specific error messages
       if (authError.message.includes('Invalid login credentials')) {
         toast.error('Invalid email or password. Please check your credentials and try again.');
       } else {
@@ -124,6 +122,111 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!resetEmail) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
+    if (!/\S+@\S+\.\S+/.test(resetEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+
+      if (error) throw error;
+
+      setResetSent(true);
+      toast.success('Password reset email sent! Check your inbox.');
+    } catch (error: unknown) {
+      const authError = error as AuthError;
+      console.error('Reset password error:', authError);
+      toast.error(authError.message || 'Failed to send reset email. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (showResetPassword) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md bg-card">
+          <CardHeader className="space-y-4 text-center">
+            <div className="flex justify-center">
+              <img src={omepilotLogo} alt="Omepilot" className="w-16 h-16" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
+            <CardDescription>
+              {resetSent 
+                ? "Check your email for the reset link"
+                : "Enter your email to receive a password reset link"
+              }
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {resetSent ? (
+              <div className="text-center space-y-4">
+                <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Mail className="h-8 w-8 text-primary" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  We've sent a password reset link to <strong>{resetEmail}</strong>. 
+                  Please check your inbox and spam folder.
+                </p>
+                <Button 
+                  variant="outline" 
+                  className="w-full gap-2"
+                  onClick={() => {
+                    setShowResetPassword(false);
+                    setResetSent(false);
+                    setResetEmail("");
+                  }}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Sign In
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="reset-email">Email</Label>
+                  <Input
+                    id="reset-email"
+                    type="email"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? 'Sending...' : 'Send Reset Link'}
+                </Button>
+                <Button 
+                  type="button"
+                  variant="ghost" 
+                  className="w-full gap-2"
+                  onClick={() => setShowResetPassword(false)}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Sign In
+                </Button>
+              </form>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -156,7 +259,17 @@ export default function Auth() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="signin-password">Password</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="signin-password">Password</Label>
+                    <Button
+                      type="button"
+                      variant="link"
+                      className="px-0 h-auto text-xs text-muted-foreground hover:text-primary"
+                      onClick={() => setShowResetPassword(true)}
+                    >
+                      Forgot password?
+                    </Button>
+                  </div>
                   <Input
                     id="signin-password"
                     type="password"
