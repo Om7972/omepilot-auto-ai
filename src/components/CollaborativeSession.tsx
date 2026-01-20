@@ -172,49 +172,34 @@ export const CollaborativeSession = ({
 
     setIsInviting(true);
     try {
-      const { data: profiles, error: profileError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', inviteUsername.trim())
-        .single();
+      // Use secure edge function with rate limiting to prevent username enumeration
+      const { data, error } = await supabase.functions.invoke('invite-user', {
+        body: { 
+          username: inviteUsername.trim(), 
+          conversation_id: conversationId 
+        },
+      });
 
-      if (profileError || !profiles) {
-        toast.error('User not found. Please check the username.');
+      if (error) {
+        console.error('Error inviting member:', error);
+        toast.error('Failed to process invite request');
         return;
       }
 
-      // Check if already a member
-      const { data: existing } = await supabase
-        .from('conversation_members')
-        .select('id')
-        .eq('conversation_id', conversationId)
-        .eq('user_id', profiles.id)
-        .single();
-
-      if (existing) {
-        toast.error('User is already a member');
+      if (data?.error) {
+        toast.error(data.error);
         return;
       }
 
-      const usedColors = members.map(m => m.color);
-      const availableColor = AVAILABLE_COLORS.find(c => !usedColors.includes(c)) || AVAILABLE_COLORS[0];
-
-      const { error } = await supabase
-        .from('conversation_members')
-        .insert({
-          conversation_id: conversationId,
-          user_id: profiles.id,
-          color: availableColor,
-        });
-
-      if (error) throw error;
-
-      toast.success('Member added successfully');
+      // Show generic success message (prevents username enumeration)
+      toast.success('Invite request processed. The user will be notified if they exist.');
       setInviteUsername('');
-      loadMembers();
+      
+      // Reload members after a brief delay to allow for DB update
+      setTimeout(() => loadMembers(), 500);
     } catch (error: any) {
       console.error('Error inviting member:', error);
-      toast.error('Failed to invite member');
+      toast.error('Failed to process invite request');
     } finally {
       setIsInviting(false);
     }
