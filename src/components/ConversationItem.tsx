@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MessageSquare, Trash2, Edit2, Check, X, Pin, Share2, MoreHorizontal, Download } from "lucide-react";
+import { MessageSquare, Trash2, Edit2, Check, X, Pin, Share2, MoreHorizontal, Download, Users, Archive } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -137,6 +137,45 @@ export const ConversationItem = ({
     setShowShareDialog(true);
   };
 
+  const handleStartGroupChat = async () => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ is_collaborative: true })
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Group chat enabled! Share the conversation to invite others.');
+      navigate(`/chat/${id}`);
+      onUpdate();
+    } catch (error: any) {
+      console.error('Error starting group chat:', error);
+      toast.error('Failed to start group chat');
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ is_archived: true } as any)
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast.success('Conversation archived');
+      onUpdate();
+      
+      if (isActive) {
+        navigate('/');
+      }
+    } catch (error: any) {
+      console.error('Error archiving conversation:', error);
+      toast.error('Failed to archive conversation');
+    }
+  };
+
   return (
     <>
       <div
@@ -197,24 +236,27 @@ export const ConversationItem = ({
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShare(); }}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleStartGroupChat(); }}>
+                  <Users className="h-4 w-4 mr-2" />
+                  Start a group chat
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setIsEditing(true); }}>
                   <Edit2 className="h-4 w-4 mr-2" />
                   Rename
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePin(); }}>
                   <Pin className={`h-4 w-4 mr-2 ${isPinned ? 'fill-current' : ''}`} />
-                  {isPinned ? 'Unpin' : 'Pin'}
+                  Pin chat
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleShare(); }}>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchive(); }}>
+                  <Archive className="h-4 w-4 mr-2" />
+                  Archive
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowExportDialog(true); }}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem 
                   onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }}
                   className="text-destructive focus:text-destructive"
