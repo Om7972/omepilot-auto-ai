@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,7 @@ const features = [
 ];
 
 export function HelpDialog({ open, onOpenChange }: HelpDialogProps) {
+  const navigate = useNavigate();
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
@@ -126,11 +128,11 @@ export function HelpDialog({ open, onOpenChange }: HelpDialogProps) {
 
           {/* Contact Support */}
           <section className="flex flex-col sm:flex-row gap-3 pt-4 border-t">
-            <Button variant="outline" className="flex-1 gap-2">
+            <Button variant="outline" className="flex-1 gap-2" onClick={() => { onOpenChange(false); navigate('/documentation'); }}>
               <ExternalLink className="h-4 w-4" />
               Documentation
             </Button>
-            <Button variant="outline" className="flex-1 gap-2">
+            <Button variant="outline" className="flex-1 gap-2" onClick={() => { onOpenChange(false); navigate('/contact-support'); }}>
               <MessageCircle className="h-4 w-4" />
               Contact Support
             </Button>

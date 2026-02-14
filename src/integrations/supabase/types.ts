@@ -53,6 +53,7 @@ export type Database = {
         Row: {
           created_at: string
           id: string
+          is_archived: boolean | null
           is_collaborative: boolean | null
           is_pinned: boolean | null
           share_token: string | null
@@ -63,6 +64,7 @@ export type Database = {
         Insert: {
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           is_collaborative?: boolean | null
           is_pinned?: boolean | null
           share_token?: string | null
@@ -73,6 +75,7 @@ export type Database = {
         Update: {
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           is_collaborative?: boolean | null
           is_pinned?: boolean | null
           share_token?: string | null
