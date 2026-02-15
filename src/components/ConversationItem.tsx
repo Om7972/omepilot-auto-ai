@@ -231,7 +231,7 @@ export const ConversationItem = ({
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="h-6 w-6 rounded opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                  className="h-6 w-6 rounded opacity-70 hover:opacity-100 transition-opacity hover:bg-muted"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </Button>
