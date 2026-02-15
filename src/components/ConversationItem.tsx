@@ -184,12 +184,18 @@ export const ConversationItem = ({
         className={`group relative flex items-center gap-2 px-2.5 py-2.5 mx-1 rounded-lg cursor-pointer transition-all ${
           isActive 
             ? 'bg-primary/10 text-primary' 
-            : 'hover:bg-muted/70 text-foreground/80'
+            : isArchived
+              ? 'hover:bg-muted/70 text-muted-foreground/60'
+              : 'hover:bg-muted/70 text-foreground/80'
         }`}
         onClick={handleClick}
       >
         <div className="relative flex-shrink-0">
-          <MessageSquare className="h-4 w-4 opacity-60" />
+          {isArchived ? (
+            <Archive className="h-4 w-4 opacity-50" />
+          ) : (
+            <MessageSquare className="h-4 w-4 opacity-60" />
+          )}
           {isPinned && (
             <Pin className="absolute -top-1 -right-1 h-2.5 w-2.5 text-primary fill-primary" />
           )}
