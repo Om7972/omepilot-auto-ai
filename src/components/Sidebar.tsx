@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, ChevronRight, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard, Archive } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 import { ConversationItem } from "./ConversationItem";
@@ -37,6 +37,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   const userName = profile?.username || user?.email?.split('@')[0] || 'User';
   const userEmail = user?.email || '';
@@ -69,9 +70,13 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
       conv.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    // Separate pinned conversations
-    const pinned = filtered.filter(conv => conv.is_pinned);
-    const unpinned = filtered.filter(conv => !conv.is_pinned);
+    // Separate archived conversations
+    const archived = filtered.filter(conv => (conv as any).is_archived);
+    const active = filtered.filter(conv => !(conv as any).is_archived);
+
+    // Separate pinned conversations from active
+    const pinned = active.filter(conv => conv.is_pinned);
+    const unpinned = active.filter(conv => !conv.is_pinned);
 
     return {
       pinned,
@@ -85,6 +90,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         return date >= lastWeek && date < yesterday;
       }),
       older: unpinned.filter(conv => new Date(conv.created_at) < lastWeek),
+      archived,
     };
   };
 
@@ -108,6 +114,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     title: string;
     created_at: string;
     is_pinned: boolean;
+    is_archived: boolean;
     share_token: string | null;
   }
 
@@ -125,6 +132,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
             id={conv.id}
             title={conv.title}
             isPinned={conv.is_pinned}
+            isArchived={conv.is_archived}
             shareToken={conv.share_token}
             onDelete={refreshConversations}
             onUpdate={refreshConversations}
@@ -295,7 +303,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
             <div className="flex items-center justify-between px-3 py-2">
               <p className="text-xs font-medium text-muted-foreground">Conversations</p>
               <span className="text-[10px] text-muted-foreground/60 bg-muted/50 px-1.5 py-0.5 rounded">
-                {conversations.length}
+                {conversations.filter(c => !(c as any).is_archived).length}
               </span>
             </div>
             <ScrollArea className="flex-1 px-2">
@@ -304,6 +312,35 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
               <ConversationGroup title="Yesterday" conversations={groupedConversations.yesterday} />
               <ConversationGroup title="Past Week" conversations={groupedConversations.pastWeek} />
               <ConversationGroup title="Older" conversations={groupedConversations.older} />
+              
+              {groupedConversations.archived.length > 0 && (
+                <div className="mb-2 mt-1">
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="w-full px-3 py-1.5 text-[11px] font-medium text-muted-foreground/70 uppercase tracking-wider flex items-center gap-1.5 hover:text-muted-foreground transition-colors"
+                  >
+                    <Archive className="h-3 w-3" />
+                    Archived
+                    <span className="text-[10px] ml-auto bg-muted/50 px-1.5 py-0.5 rounded normal-case">
+                      {groupedConversations.archived.length}
+                    </span>
+                    <ChevronRight className={`h-3 w-3 transition-transform ${showArchived ? 'rotate-90' : ''}`} />
+                  </button>
+                  {showArchived && groupedConversations.archived.map((conv) => (
+                    <ConversationItem
+                      key={conv.id}
+                      id={conv.id}
+                      title={conv.title}
+                      isPinned={conv.is_pinned}
+                      isArchived={true}
+                      shareToken={conv.share_token}
+                      onDelete={refreshConversations}
+                      onUpdate={refreshConversations}
+                    />
+                  ))}
+                </div>
+              )}
+              
               <div className="h-4" />
             </ScrollArea>
           </div>

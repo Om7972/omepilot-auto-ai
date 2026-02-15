@@ -29,6 +29,7 @@ interface ConversationItemProps {
   id: string;
   title: string;
   isPinned?: boolean;
+  isArchived?: boolean;
   shareToken?: string | null;
   onDelete: () => void;
   onUpdate: () => void;
@@ -38,6 +39,7 @@ export const ConversationItem = ({
   id, 
   title, 
   isPinned = false,
+  isArchived = false,
   shareToken,
   onDelete, 
   onUpdate 
@@ -159,20 +161,20 @@ export const ConversationItem = ({
     try {
       const { error } = await supabase
         .from('conversations')
-        .update({ is_archived: true } as any)
+        .update({ is_archived: !isArchived } as any)
         .eq('id', id);
 
       if (error) throw error;
 
-      toast.success('Conversation archived');
+      toast.success(isArchived ? 'Conversation unarchived' : 'Conversation archived');
       onUpdate();
       
-      if (isActive) {
+      if (isActive && !isArchived) {
         navigate('/');
       }
     } catch (error: any) {
       console.error('Error archiving conversation:', error);
-      toast.error('Failed to archive conversation');
+      toast.error('Failed to update conversation');
     }
   };
 
@@ -255,7 +257,7 @@ export const ConversationItem = ({
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleArchive(); }}>
                   <Archive className="h-4 w-4 mr-2" />
-                  Archive
+                  {isArchived ? 'Unarchive' : 'Archive'}
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={(e) => { e.stopPropagation(); setShowDeleteDialog(true); }}
