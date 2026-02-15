@@ -12,6 +12,7 @@ interface Conversation {
   updated_at: string;
   is_collaborative: boolean;
   is_pinned: boolean;
+  is_archived: boolean;
   share_token: string | null;
 }
 
