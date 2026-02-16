@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 10;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) { rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS }); return true; }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -15,19 +27,21 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('Unauthorized');
 
+    if (!checkRateLimit(user.id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many requests. Please wait a moment and try again.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { documentId } = await req.json();
 
-    // Get document from database
     const { data: document, error: docError } = await supabaseClient
       .from('documents')
       .select('*')
@@ -36,7 +50,6 @@ serve(async (req) => {
 
     if (docError) throw docError;
 
-    // Download file from storage
     const { data: fileData, error: downloadError } = await supabaseClient
       .storage
       .from('documents')
@@ -44,13 +57,11 @@ serve(async (req) => {
 
     if (downloadError) throw downloadError;
 
-    // Convert to text based on file type
     let extractedText = '';
     
     if (document.file_type.includes('text') || document.file_type.includes('json')) {
       extractedText = await fileData.text();
     } else if (document.file_type.includes('pdf')) {
-      // For PDFs, use Lovable AI to extract text
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
       const arrayBuffer = await fileData.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
@@ -67,16 +78,8 @@ serve(async (req) => {
             {
               role: 'user',
               content: [
-                {
-                  type: 'text',
-                  text: 'Extract all text content from this document. Return only the extracted text without any commentary.'
-                },
-                {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:${document.file_type};base64,${base64}`
-                  }
-                }
+                { type: 'text', text: 'Extract all text content from this document. Return only the extracted text without any commentary.' },
+                { type: 'image_url', image_url: { url: `data:${document.file_type};base64,${base64}` } }
               ]
             }
           ]
@@ -87,7 +90,6 @@ serve(async (req) => {
       extractedText = aiData.choices[0].message.content;
     }
 
-    // Update document with extracted text
     const { error: updateError } = await supabaseClient
       .from('documents')
       .update({ extracted_text: extractedText })
