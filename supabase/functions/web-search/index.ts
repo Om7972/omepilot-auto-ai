@@ -6,6 +6,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX = 15;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(userId);
+  if (!entry || now > entry.resetAt) { rateLimitMap.set(userId, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS }); return true; }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -15,15 +27,18 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
-        },
-      }
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     );
 
     const { data: { user } } = await supabaseClient.auth.getUser();
     if (!user) throw new Error('Unauthorized');
+
+    if (!checkRateLimit(user.id)) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Too many requests. Please wait a moment and try again.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const { query } = await req.json();
 
@@ -54,22 +69,15 @@ serve(async (req) => {
     const aiData = await response.json();
     const answer = aiData.choices[0].message.content;
 
-    // Extract potential sources/citations from the answer
     const citations = answer.match(/\[(\d+)\]/g) || [];
     const sources = citations.map((c: string, i: number) => ({
       id: i + 1,
       citation: c,
-      // In a real implementation, you'd extract actual URLs
       url: `#source-${i + 1}`
     }));
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        answer,
-        sources,
-        query
-      }),
+      JSON.stringify({ success: true, answer, sources, query }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
