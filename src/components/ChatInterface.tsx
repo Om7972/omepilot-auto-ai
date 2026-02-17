@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin, Volume2, VolumeX } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin, Volume2, VolumeX, ShieldAlert, X } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
 import { FileUpload } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
@@ -859,6 +859,21 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           conversationId={conversationId}
           onUnpin={handleUnpinMessage}
         />
+      )}
+
+      {/* Rate Limit Banner */}
+      {rateLimitCountdown > 0 && (
+        <div className="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-in slide-in-from-top-2 duration-300">
+          <ShieldAlert className="h-5 w-5 shrink-0" />
+          <div className="flex-1">
+            <span className="font-semibold">Rate limit reached.</span>{" "}
+            You can send another message in{" "}
+            <span className="font-mono font-bold">{rateLimitCountdown}s</span>
+          </div>
+          <div className="h-8 w-8 rounded-full border-2 border-destructive/50 flex items-center justify-center">
+            <span className="text-xs font-bold">{rateLimitCountdown}</span>
+          </div>
+        </div>
       )}
 
       {/* Messages */}
