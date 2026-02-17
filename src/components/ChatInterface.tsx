@@ -75,6 +75,8 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const [userColors, setUserColors] = useState<Map<string, UserColor>>(new Map());
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
+  const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
+  const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -86,6 +88,26 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   
   // TTS Hook
   const tts = useTTS();
+
+  // Rate limit countdown timer
+  useEffect(() => {
+    if (!rateLimitedUntil) {
+      setRateLimitCountdown(0);
+      return;
+    }
+    const tick = () => {
+      const remaining = Math.ceil((rateLimitedUntil - Date.now()) / 1000);
+      if (remaining <= 0) {
+        setRateLimitedUntil(null);
+        setRateLimitCountdown(0);
+      } else {
+        setRateLimitCountdown(remaining);
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [rateLimitedUntil]);
 
   const handleCollaborativeChange = (enabled: boolean) => {
     setIsCollaborative(enabled);
@@ -247,7 +269,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || rateLimitedUntil) return;
 
     const messageText = input.trim();
     setInput("");
@@ -308,22 +330,28 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       if (error) {
         console.error('Edge function error:', error);
         
-        // Handle 401 Unauthorized - user needs to log in again
-        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
-          toast.error('Session expired. Please log in again.', {
+        // Handle rate limiting with countdown
+        if (error.message?.includes('429') || error.message?.includes('Too many requests') || error.message?.includes('Rate limit')) {
+          const cooldownMs = 60_000;
+          setRateLimitedUntil(Date.now() + cooldownMs);
+          toast.error('Rate limit reached. Please wait before sending another message.', {
             duration: 5000,
           });
-          // Optionally redirect to auth page
-          // navigate('/auth');
+          setInput(messageText);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Handle 401 Unauthorized
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+          toast.error('Session expired. Please log in again.', { duration: 5000 });
           setInput(messageText);
           setIsLoading(false);
           return;
         }
         
         if (error.message?.includes('500')) {
-          toast.error('AI service configuration error. Please check that API keys are set in Supabase dashboard.', {
-            duration: 5000,
-          });
+          toast.error('AI service temporarily unavailable. Please try again.', { duration: 5000 });
         } else {
           throw error;
         }
@@ -333,26 +361,34 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       }
 
       if (!data.success) {
-        toast.error(data.error || 'Failed to send message');
+        // Check if the response body indicates rate limiting
+        if (data.error?.includes('Too many requests') || data.error?.includes('Rate limit')) {
+          const cooldownMs = 60_000;
+          setRateLimitedUntil(Date.now() + cooldownMs);
+          toast.error('Rate limit reached. Please wait before sending another message.', { duration: 5000 });
+        } else {
+          toast.error(data.error || 'Failed to send message');
+        }
         setInput(messageText);
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
       
-      // Provide helpful error messages
-      if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+      if (error.message?.includes('429') || error.message?.includes('Too many requests') || error.message?.includes('Rate limit')) {
+        const cooldownMs = 60_000;
+        setRateLimitedUntil(Date.now() + cooldownMs);
+        toast.error('Rate limit reached. Please wait before sending another message.', { duration: 5000 });
+      } else if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
         toast.error('Session expired. Please log in again.');
       } else if (error.message?.includes('500') || error.message?.includes('Edge Function')) {
         toast.error('AI service temporarily unavailable. Please try again.');
       } else if (error.message?.includes('network') || error.message?.includes('fetch')) {
         toast.error('Network error. Please check your internet connection.');
-      } else if (error.message?.includes('Rate limit')) {
-        toast.error('Rate limit exceeded. Please try again in a moment.');
       } else {
         toast.error(error.message || 'Failed to send message');
       }
       
-      setInput(messageText); // Restore input on error
+      setInput(messageText);
     } finally {
       setIsLoading(false);
     }
@@ -1009,14 +1045,29 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                 <Mic className="h-5 w-5" />
               </Button>
 
-              <Button
-                size="icon"
-                onClick={handleSend}
-                disabled={!input.trim() || isLoading}
-                className="rounded-full bg-primary hover:bg-primary/90 h-10 w-10"
-              >
-                <Send className="h-5 w-5" />
-              </Button>
+              {rateLimitCountdown > 0 ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      disabled
+                      className="rounded-full bg-destructive/20 text-destructive h-10 w-10 relative"
+                    >
+                      <span className="text-xs font-bold">{rateLimitCountdown}s</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rate limited — wait {rateLimitCountdown}s</TooltipContent>
+                </Tooltip>
+              ) : (
+                <Button
+                  size="icon"
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className="rounded-full bg-primary hover:bg-primary/90 h-10 w-10"
+                >
+                  <Send className="h-5 w-5" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
