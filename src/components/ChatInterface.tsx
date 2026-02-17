@@ -863,15 +863,23 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
 
       {/* Rate Limit Banner */}
       {rateLimitCountdown > 0 && (
-        <div className="mx-4 mt-2 flex items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive animate-in slide-in-from-top-2 duration-300">
-          <ShieldAlert className="h-5 w-5 shrink-0" />
-          <div className="flex-1">
-            <span className="font-semibold">Rate limit reached.</span>{" "}
-            You can send another message in{" "}
-            <span className="font-mono font-bold">{rateLimitCountdown}s</span>
+        <div className="mx-4 mt-2 rounded-lg border border-destructive/30 bg-destructive/10 animate-in slide-in-from-top-2 duration-300 overflow-hidden">
+          <div className="flex items-center gap-3 px-4 py-3 text-sm text-destructive">
+            <ShieldAlert className="h-5 w-5 shrink-0" />
+            <div className="flex-1">
+              <span className="font-semibold">Rate limit reached.</span>{" "}
+              You can send another message in{" "}
+              <span className="font-mono font-bold">{rateLimitCountdown}s</span>
+            </div>
+            <div className="h-8 w-8 rounded-full border-2 border-destructive/50 flex items-center justify-center">
+              <span className="text-xs font-bold">{rateLimitCountdown}</span>
+            </div>
           </div>
-          <div className="h-8 w-8 rounded-full border-2 border-destructive/50 flex items-center justify-center">
-            <span className="text-xs font-bold">{rateLimitCountdown}</span>
+          <div className="h-1.5 w-full bg-destructive/20">
+            <div
+              className="h-full bg-destructive/60 transition-all duration-1000 ease-linear rounded-r-full"
+              style={{ width: `${(rateLimitCountdown / 60) * 100}%` }}
+            />
           </div>
         </div>
       )}
