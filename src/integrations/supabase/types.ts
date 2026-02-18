@@ -668,6 +668,18 @@ export type Database = {
         Returns: Json
       }
       generate_share_token: { Args: never; Returns: string }
+      get_leaderboard: {
+        Args: { limit_count?: number }
+        Returns: {
+          badges: Json
+          current_streak: number
+          longest_streak: number
+          messages_sent: number
+          total_points: number
+          user_id: string
+          username: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

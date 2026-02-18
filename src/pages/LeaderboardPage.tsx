@@ -46,43 +46,20 @@ export default function LeaderboardPage() {
         setCurrentUserId(user.id);
       }
 
-      // Fetch user stats with profiles
+      // Use the security definer function for leaderboard data
       const { data: stats, error } = await supabase
-        .from('user_stats')
-        .select(`
-          user_id,
-          total_points,
-          current_streak,
-          longest_streak,
-          messages_sent,
-          badges
-        `)
-        .order(
-          sortBy === 'points' ? 'total_points' : 
-          sortBy === 'streak' ? 'longest_streak' : 'messages_sent', 
-          { ascending: false }
-        )
-        .limit(100);
+        .rpc('get_leaderboard', { limit_count: 100 });
 
       if (error) throw error;
 
-      // Fetch usernames for each user
-      const usersWithNames = await Promise.all(
-        (stats || []).map(async (stat) => {
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', stat.user_id)
-            .single();
+      // Sort client-side based on selected criteria
+      const sorted = [...(stats || [])].sort((a, b) => {
+        if (sortBy === 'streak') return (b.longest_streak ?? 0) - (a.longest_streak ?? 0);
+        if (sortBy === 'messages') return (b.messages_sent ?? 0) - (a.messages_sent ?? 0);
+        return (b.total_points ?? 0) - (a.total_points ?? 0);
+      });
 
-          return {
-            ...stat,
-            username: profile?.username || null,
-          };
-        })
-      );
-
-      setLeaderboard(usersWithNames);
+      setLeaderboard(sorted as LeaderboardEntry[]);
     } catch (error) {
       console.error('Error loading leaderboard:', error);
       toast.error('Failed to load leaderboard');

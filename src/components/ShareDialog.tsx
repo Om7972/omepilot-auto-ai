@@ -34,7 +34,7 @@ export const ShareDialog = ({
   const [isLoading, setIsLoading] = useState(false);
 
   const shareUrl = shareToken
-    ? `${window.location.origin}/chat/${conversationId}?share=${shareToken}`
+    ? `${window.location.origin}/shared/${conversationId}?token=${shareToken}`
     : "";
 
   const handleTogglePublic = async () => {
