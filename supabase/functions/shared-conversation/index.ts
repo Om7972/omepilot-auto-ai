@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (shareToken.length > 64 || !/^[a-f0-9]+$/i.test(shareToken)) {
+    if (shareToken.length > 64 || !/^[a-f0-9-]+$/i.test(shareToken)) {
       return new Response(
         JSON.stringify({ error: "Invalid token format" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
