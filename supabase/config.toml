@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.ai-suggest]
 verify_jwt = true
+
+[functions.shared-conversation]
+verify_jwt = false
