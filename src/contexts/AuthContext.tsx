@@ -82,7 +82,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     // THEN check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: existingSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: existingSession }, error }) => {
+      if (error) {
+        console.warn("AuthContext: Stale session detected, clearing:", error.message);
+        // Clear corrupted tokens to stop the retry loop
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
       setSession(existingSession);
       setUser(existingSession?.user ?? null);
 
