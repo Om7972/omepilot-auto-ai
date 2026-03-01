@@ -3,8 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { useEffect, useState, Component, ReactNode } from "react";
-import { Session } from '@supabase/supabase-js';
+import { Component, ReactNode } from "react";
 import Auth from "./pages/Auth";
 import Chat from "./pages/Chat";
 import Discover from "./pages/Discover";
@@ -21,7 +20,7 @@ import DocumentationPage from "./pages/DocumentationPage";
 import ContactSupportPage from "./pages/ContactSupportPage";
 import SharedConversation from "./pages/SharedConversation";
 import NotFound from "./pages/NotFound";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { AuthProvider } from "@/contexts/AuthContext";
 
@@ -70,21 +69,7 @@ class ErrorBoundary extends Component<
 }
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const { session, loading } = useAuth();
 
   if (loading) {
     return (

@@ -1,30 +1,14 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { Navigate } from "react-router-dom";
 import { Sidebar } from "@/components/Sidebar";
 import { ChatInterface } from "@/components/ChatInterface";
-import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Chat() {
-  const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const { session, loading } = useAuth();
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
-  const checkAuth = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    
-    if (!session) {
-      navigate('/auth');
-      return;
-    }
-
-    setIsLoading(false);
-  };
-
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <div className="flex gap-2">
@@ -35,6 +19,11 @@ export default function Chat() {
       </div>
     );
   }
+
+  if (!session) {
+    return <Navigate to="/auth" replace />;
+  }
+
 
   return (
     <div className="flex h-screen w-full overflow-hidden">
