@@ -10,9 +10,11 @@ import { toast } from "sonner";
 import { AuthError } from '@supabase/supabase-js';
 import { ArrowLeft, Mail } from "lucide-react";
 import omepilotLogo from "@/assets/omepilot-logo.png";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Auth() {
   const navigate = useNavigate();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,26 +24,10 @@ export default function Auth() {
   const [resetSent, setResetSent] = useState(false);
 
   useEffect(() => {
-    // Clear any stale/corrupted session tokens that cause "Failed to fetch" loops
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
-      if (error) {
-        console.warn("Stale session detected, clearing:", error.message);
-        supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-        return;
-      }
-      if (session) {
-        navigate('/');
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_IN') {
-        if (session) navigate('/');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    if (!authLoading && user) {
+      navigate('/');
+    }
+  }, [authLoading, user, navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,6 +69,13 @@ export default function Auth() {
     } catch (error: unknown) {
       const authError = error as AuthError;
       console.error('Sign up error:', authError);
+
+      if (authError.message?.includes('Failed to fetch')) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        toast.error('Connection/session reset. Please try sign up again.');
+        return;
+      }
+
       toast.error(authError.message || 'Failed to sign up. Please try again.');
     } finally {
       setLoading(false);
@@ -119,6 +112,13 @@ export default function Auth() {
     } catch (error: unknown) {
       const authError = error as AuthError;
       console.error('Sign in error:', authError);
+
+      if (authError.message?.includes('Failed to fetch')) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+        toast.error('Connection/session reset. Please try sign in again.');
+        return;
+      }
+
       if (authError.message.includes('Invalid login credentials')) {
         toast.error('Invalid email or password. Please check your credentials and try again.');
       } else {

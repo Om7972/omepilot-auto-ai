@@ -61,16 +61,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
         if (currentSession?.user) {
-          // Defer profile fetch to avoid blocking
-          setTimeout(async () => {
-            const profileData = await fetchProfile(currentSession.user.id);
+          // Avoid async/await in auth callback to prevent lock/contention issues
+          fetchProfile(currentSession.user.id).then((profileData) => {
             setProfile(profileData);
-          }, 0);
+          });
         } else {
           setProfile(null);
         }
@@ -120,7 +119,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        toast.error(error.message);
+        if (error.message?.includes("Failed to fetch")) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          toast.error("Connection/session reset. Please try signing up again.");
+        } else {
+          toast.error(error.message);
+        }
         return { error };
       }
 
@@ -141,7 +145,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
 
       if (error) {
-        if (error.message.includes("Invalid login credentials")) {
+        if (error.message?.includes("Failed to fetch")) {
+          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+          toast.error("Connection/session reset. Please try signing in again.");
+        } else if (error.message.includes("Invalid login credentials")) {
           toast.error("Invalid email or password");
         } else {
           toast.error(error.message);
