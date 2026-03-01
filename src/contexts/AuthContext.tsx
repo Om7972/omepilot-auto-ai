@@ -84,7 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session: existingSession }, error }) => {
       if (error) {
         console.warn("AuthContext: Stale session detected, clearing:", error.message);
-        // Clear corrupted tokens to stop the retry loop
+        // Nuke localStorage tokens directly to stop SDK auto-refresh immediately
+        try {
+          const keys = Object.keys(localStorage);
+          const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
+          if (authKey) localStorage.removeItem(authKey);
+        } catch {}
+        // Also call signOut to clean up SDK internal state
         await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         setSession(null);
         setUser(null);
