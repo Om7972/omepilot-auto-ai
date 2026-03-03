@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from "react
 import { Session, User, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { clearLocalAuthStorage, isAuthNetworkError, withAuthRecovery } from "@/lib/authRecovery";
 
 interface Profile {
   id: string;
@@ -84,13 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data: { session: existingSession }, error }) => {
       if (error) {
         console.warn("AuthContext: Stale session detected, clearing:", error.message);
-        // Nuke localStorage tokens directly to stop SDK auto-refresh immediately
-        try {
-          const keys = Object.keys(localStorage);
-          const authKey = keys.find(k => k.startsWith('sb-') && k.endsWith('-auth-token'));
-          if (authKey) localStorage.removeItem(authKey);
-        } catch {}
-        // Also call signOut to clean up SDK internal state
+        clearLocalAuthStorage();
         await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
         setSession(null);
         setUser(null);
@@ -115,19 +110,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, username: string) => {
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: { username },
-        },
-      });
+      const { error } = await withAuthRecovery(() =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: { username },
+          },
+        })
+      );
 
       if (error) {
-        if (error.message?.includes("Failed to fetch")) {
-          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-          toast.error("Connection/session reset. Please try signing up again.");
+        if (isAuthNetworkError(error)) {
+          toast.error("Temporary network/session issue. Please try again.");
         } else {
           toast.error(error.message);
         }
@@ -145,15 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { error } = await withAuthRecovery(() =>
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+      );
 
       if (error) {
-        if (error.message?.includes("Failed to fetch")) {
-          await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-          toast.error("Connection/session reset. Please try signing in again.");
+        if (isAuthNetworkError(error)) {
+          toast.error("Temporary network/session issue. Please try again.");
         } else if (error.message.includes("Invalid login credentials")) {
           toast.error("Invalid email or password");
         } else {

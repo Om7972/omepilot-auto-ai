@@ -11,6 +11,7 @@ import { AuthError } from '@supabase/supabase-js';
 import { ArrowLeft, Mail } from "lucide-react";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAuthNetworkError, withAuthRecovery } from "@/lib/authRecovery";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -31,6 +32,11 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (authLoading) {
+      toast.info('Finalizing authentication setup, please wait a moment.');
+      return;
+    }
     
     if (!email || !password || !username) {
       toast.error('Please fill in all fields');
@@ -50,16 +56,18 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            username: username
-          }
-        },
-      });
+      const { data, error } = await withAuthRecovery(() =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+            data: {
+              username: username,
+            },
+          },
+        })
+      );
 
       if (error) throw error;
 
@@ -70,9 +78,8 @@ export default function Auth() {
       const authError = error as AuthError;
       console.error('Sign up error:', authError);
 
-      if (authError.message?.includes('Failed to fetch')) {
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-        toast.error('Connection/session reset. Please try sign up again.');
+      if (isAuthNetworkError(authError)) {
+        toast.error('Temporary network/session issue. Please try again in a moment.');
         return;
       }
 
@@ -84,6 +91,11 @@ export default function Auth() {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (authLoading) {
+      toast.info('Finalizing authentication setup, please wait a moment.');
+      return;
+    }
 
     if (!email || !password) {
       toast.error('Please fill in all fields');
@@ -98,10 +110,12 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withAuthRecovery(() =>
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+      );
 
       if (error) throw error;
 
@@ -113,17 +127,17 @@ export default function Auth() {
       const authError = error as AuthError;
       console.error('Sign in error:', authError);
 
-      if (authError.message?.includes('Failed to fetch')) {
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-        toast.error('Connection/session reset. Please try sign in again.');
+      if (authError.message.includes('Invalid login credentials')) {
+        toast.error('Invalid email or password. Please check your credentials and try again.');
         return;
       }
 
-      if (authError.message.includes('Invalid login credentials')) {
-        toast.error('Invalid email or password. Please check your credentials and try again.');
-      } else {
-        toast.error(authError.message || 'Failed to sign in. Please try again.');
+      if (isAuthNetworkError(authError)) {
+        toast.error('Temporary network/session issue. Please try again in a moment.');
+        return;
       }
+
+      toast.error(authError.message || 'Failed to sign in. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -145,9 +159,11 @@ export default function Auth() {
     setLoading(true);
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(resetEmail, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
-      });
+      const { error } = await withAuthRecovery(() =>
+        supabase.auth.resetPasswordForEmail(resetEmail, {
+          redirectTo: `${window.location.origin}/auth?reset=true`,
+        })
+      );
 
       if (error) throw error;
 
@@ -156,11 +172,29 @@ export default function Auth() {
     } catch (error: unknown) {
       const authError = error as AuthError;
       console.error('Reset password error:', authError);
+
+      if (isAuthNetworkError(authError)) {
+        toast.error('Temporary network/session issue. Please try again in a moment.');
+        return;
+      }
+
       toast.error(authError.message || 'Failed to send reset email. Please try again.');
     } finally {
       setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <div className="flex gap-2">
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce bounce-0" />
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce bounce-1" />
+          <div className="w-3 h-3 rounded-full bg-primary animate-bounce bounce-2" />
+        </div>
+      </div>
+    );
+  }
 
   if (showResetPassword) {
     return (
@@ -214,7 +248,7 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
                   {loading ? 'Sending...' : 'Send Reset Link'}
                 </Button>
                 <Button 
@@ -285,7 +319,7 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
@@ -326,7 +360,7 @@ export default function Auth() {
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full" disabled={loading || authLoading}>
                   {loading ? 'Creating account...' : 'Sign Up'}
                 </Button>
               </form>
