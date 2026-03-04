@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -97,6 +98,29 @@ serve(async (req) => {
 
       const aiData = await response.json();
       extractedText = aiData.choices[0].message.content;
+    } else if (document.file_type.includes('word') || document.file_type.includes('docx') || document.filename?.endsWith('.docx')) {
+      // DOCX is a ZIP containing XML files
+      const arrayBuffer = await fileData.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+      const docXml = await zip.file('word/document.xml')?.async('text');
+      
+      if (docXml) {
+        // Strip XML tags to get plain text, preserve paragraph breaks
+        extractedText = docXml
+          .replace(/<\/w:p>/g, '\n')           // paragraph breaks
+          .replace(/<w:tab\/>/g, '\t')          // tabs
+          .replace(/<w:br[^>]*\/>/g, '\n')      // line breaks
+          .replace(/<[^>]+>/g, '')              // strip all remaining XML tags
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/\n{3,}/g, '\n\n')          // collapse excessive newlines
+          .trim();
+      } else {
+        extractedText = 'Could not extract text from DOCX file.';
+      }
     }
 
     const { error: updateError } = await supabaseClient
