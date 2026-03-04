@@ -3,9 +3,9 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin, Volume2, VolumeX, ShieldAlert, X } from "lucide-react";
+import { Send, Mic, MessageSquarePlus, PanelLeftClose, Sparkles, FileText, Zap, Brain, MessageCircle, PanelLeft, Plus, Pin, Volume2, VolumeX, ShieldAlert, X, Image as ImageIcon, File } from "lucide-react";
 import { PersonaSwitcher } from "@/components/PersonaSwitcher";
-import { FileUpload } from "@/components/FileUpload";
+import { FileUpload, type PendingFile } from "@/components/FileUpload";
 import { CollaborativeSession } from "@/components/CollaborativeSession";
 import { OnlineUsersIndicator } from "@/components/OnlineUsersIndicator";
 import { UserTypingIndicator } from "@/components/UserTypingIndicator";
@@ -28,6 +28,7 @@ interface Message {
   content: string;
   created_at: string;
   user_id?: string;
+  attachments?: any;
 }
 
 interface UserColor {
@@ -77,6 +78,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [rateLimitedUntil, setRateLimitedUntil] = useState<number | null>(null);
   const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
+  const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -269,10 +271,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || rateLimitedUntil) return;
+    if ((!input.trim() && pendingFiles.length === 0) || isLoading || rateLimitedUntil) return;
 
     const messageText = input.trim();
+    const attachments = pendingFiles.map(f => ({ name: f.name, type: f.type, size: f.size, documentId: f.documentId }));
     setInput("");
+    setPendingFiles([]);
     setIsLoading(true);
 
     // Stop typing indicator
@@ -324,6 +328,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           message: messageText,
           conversationId: activeConversationId,
           provider: selectedPersona,
+          attachments: attachments.length > 0 ? attachments : undefined,
         },
       });
 
@@ -941,6 +946,23 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                           : undefined
                       }
                     >
+                      {/* Render attachments */}
+                      {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {message.attachments.map((att: any, idx: number) => (
+                            <div key={idx} className="flex items-center gap-2 rounded-lg bg-background/20 backdrop-blur-sm px-3 py-2 text-xs">
+                              {att.type?.startsWith('image/') ? (
+                                <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                              ) : att.type?.includes('pdf') ? (
+                                <FileText className="h-3.5 w-3.5 shrink-0" />
+                              ) : (
+                                <File className="h-3.5 w-3.5 shrink-0" />
+                              )}
+                              <span className="truncate max-w-[120px]">{att.name || 'File'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                       <p className="whitespace-pre-wrap">{message.content}</p>
                     </div>
                     {/* Reactions, Pin, TTS, and Feedback */}
@@ -1008,89 +1030,142 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
 
       {/* Input */}
       <div className="border-t border-border p-4 md:p-6">
-        <div className="max-w-4xl mx-auto space-y-4">
-          {/* Main Input Area */}
-          <div className="relative flex items-end gap-2 bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 p-3 shadow-lg">
-            <MessageSquarePlus className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-2" />
-            
-            <div className="flex-1 flex flex-col gap-2">
+        <div className="max-w-4xl mx-auto">
+          <div className="relative bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 shadow-lg">
+            {/* Pending file attachments preview */}
+            {pendingFiles.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                {pendingFiles.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5 text-xs text-muted-foreground"
+                  >
+                    {file.type.startsWith('image/') ? (
+                      file.url ? (
+                        <img src={file.url} alt={file.name} className="h-6 w-6 rounded object-cover" />
+                      ) : (
+                        <ImageIcon className="h-3.5 w-3.5" />
+                      )
+                    ) : file.type.includes('pdf') ? (
+                      <FileText className="h-3.5 w-3.5" />
+                    ) : (
+                      <File className="h-3.5 w-3.5" />
+                    )}
+                    <span className="truncate max-w-[100px]">{file.name}</span>
+                    <button
+                      onClick={() => setPendingFiles((prev) => prev.filter((f) => f.id !== file.id))}
+                      className="hover:text-foreground transition-colors"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Textarea */}
+            <div className="px-4 pt-3 pb-1">
               <Textarea
                 ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Message Copilot"
-                className="flex-1 border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-0 text-base placeholder:text-muted-foreground/60"
+                className="border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-0 px-0 text-base placeholder:text-muted-foreground/60"
                 rows={1}
               />
-              
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={handleNewChat}
-                  className="rounded-lg hover:bg-accent h-8 w-8"
-                  title="New conversation"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
-                <PersonaSwitcher 
+            </div>
+
+            {/* Bottom action bar */}
+            <div className="flex items-center justify-between px-3 pb-3">
+              <div className="flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleNewChat}
+                      className="rounded-lg hover:bg-accent h-8 w-8"
+                    >
+                      <MessageSquarePlus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>New chat</TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleNewChat}
+                      className="rounded-lg hover:bg-accent h-8 w-8"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>More options</TooltipContent>
+                </Tooltip>
+
+                <PersonaSwitcher
                   selectedPersona={selectedPersona}
                   onPersonaChange={(persona) => {
                     setSelectedPersona(persona);
                     setSelectedModel(persona);
                   }}
                 />
-                <FileUpload 
-                  conversationId={conversationId} 
-                  onCreateConversation={(newConvId) => {
-                    navigate(`/chat/${newConvId}`);
-                  }}
+
+                <FileUpload
+                  conversationId={conversationId}
+                  onCreateConversation={(newConvId) => navigate(`/chat/${newConvId}`)}
+                  onFilePending={(file) => setPendingFiles((prev) => [...prev, file])}
                 />
               </div>
-            </div>
 
-            <div className="flex gap-2 flex-shrink-0">
-              <Button
-                size="icon"
-                variant="ghost"
-                onClick={toggleVoiceInput}
-                disabled={isTranscribing}
-                className={`rounded-full hover:bg-accent h-10 w-10 ${isListening ? 'bg-primary/20 text-primary' : ''}`}
-                title={
-                  voiceMode === "server"
-                    ? isListening
-                      ? "Stop recording"
-                      : "Record voice"
-                    : "Voice input"
-                }
-              >
-                <Mic className="h-5 w-5" />
-              </Button>
-
-              {rateLimitCountdown > 0 ? (
+              <div className="flex items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       size="icon"
-                      disabled
-                      className="rounded-full bg-destructive/20 text-destructive h-10 w-10 relative"
+                      variant="ghost"
+                      onClick={toggleVoiceInput}
+                      disabled={isTranscribing}
+                      className={`rounded-full hover:bg-accent h-9 w-9 ${isListening ? 'bg-primary/20 text-primary' : ''}`}
                     >
-                      <span className="text-xs font-bold">{rateLimitCountdown}s</span>
+                      <Mic className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Rate limited — wait {rateLimitCountdown}s</TooltipContent>
+                  <TooltipContent>
+                    {voiceMode === "server"
+                      ? isListening ? "Stop recording" : "Record voice"
+                      : "Voice input"}
+                  </TooltipContent>
                 </Tooltip>
-              ) : (
-                <Button
-                  size="icon"
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  className="rounded-full bg-primary hover:bg-primary/90 h-10 w-10"
-                >
-                  <Send className="h-5 w-5" />
-                </Button>
-              )}
+
+                {rateLimitCountdown > 0 ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="icon"
+                        disabled
+                        className="rounded-full bg-destructive/20 text-destructive h-9 w-9"
+                      >
+                        <span className="text-xs font-bold">{rateLimitCountdown}s</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Rate limited — wait {rateLimitCountdown}s</TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={!input.trim() && pendingFiles.length === 0 || isLoading}
+                    className="rounded-full bg-primary hover:bg-primary/90 h-9 w-9"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>
