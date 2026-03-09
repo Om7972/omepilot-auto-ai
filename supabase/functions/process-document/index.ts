@@ -105,22 +105,72 @@ serve(async (req) => {
       const docXml = await zip.file('word/document.xml')?.async('text');
       
       if (docXml) {
-        // Strip XML tags to get plain text, preserve paragraph breaks
         extractedText = docXml
-          .replace(/<\/w:p>/g, '\n')           // paragraph breaks
-          .replace(/<w:tab\/>/g, '\t')          // tabs
-          .replace(/<w:br[^>]*\/>/g, '\n')      // line breaks
-          .replace(/<[^>]+>/g, '')              // strip all remaining XML tags
+          .replace(/<\/w:p>/g, '\n')
+          .replace(/<w:tab\/>/g, '\t')
+          .replace(/<w:br[^>]*\/>/g, '\n')
+          .replace(/<[^>]+>/g, '')
           .replace(/&amp;/g, '&')
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>')
           .replace(/&quot;/g, '"')
           .replace(/&apos;/g, "'")
-          .replace(/\n{3,}/g, '\n\n')          // collapse excessive newlines
+          .replace(/\n{3,}/g, '\n\n')
           .trim();
       } else {
         extractedText = 'Could not extract text from DOCX file.';
       }
+    } else if (document.file_type.includes('spreadsheet') || document.file_type.includes('excel') || document.filename?.endsWith('.xlsx')) {
+      // XLSX is a ZIP containing XML files
+      const arrayBuffer = await fileData.arrayBuffer();
+      const zip = await JSZip.loadAsync(arrayBuffer);
+
+      // Parse shared strings (XLSX stores text in a shared strings table)
+      const sharedStrings: string[] = [];
+      const ssXml = await zip.file('xl/sharedStrings.xml')?.async('text');
+      if (ssXml) {
+        const matches = ssXml.match(/<t[^>]*>([^<]*)<\/t>/g) || [];
+        for (const m of matches) {
+          sharedStrings.push(m.replace(/<[^>]+>/g, ''));
+        }
+      }
+
+      // Parse each sheet
+      const rows: string[] = [];
+      const sheetFiles = Object.keys(zip.files).filter(f => f.match(/^xl\/worksheets\/sheet\d+\.xml$/)).sort();
+
+      for (const sheetFile of sheetFiles) {
+        const sheetXml = await zip.file(sheetFile)?.async('text');
+        if (!sheetXml) continue;
+
+        if (sheetFiles.length > 1) {
+          const sheetNum = sheetFile.match(/sheet(\d+)/)?.[1];
+          rows.push(`--- Sheet ${sheetNum} ---`);
+        }
+
+        // Extract rows: each <row> contains <c> cells
+        const rowMatches = sheetXml.match(/<row[^>]*>[\s\S]*?<\/row>/g) || [];
+        for (const rowXml of rowMatches) {
+          const cellValues: string[] = [];
+          const cellMatches = rowXml.match(/<c[^>]*>[\s\S]*?<\/c>|<c[^/]*\/>/g) || [];
+          for (const cellXml of cellMatches) {
+            const isSharedString = /t="s"/.test(cellXml);
+            const valueMatch = cellXml.match(/<v>([^<]*)<\/v>/);
+            if (valueMatch) {
+              if (isSharedString) {
+                const idx = parseInt(valueMatch[1], 10);
+                cellValues.push(sharedStrings[idx] ?? valueMatch[1]);
+              } else {
+                cellValues.push(valueMatch[1]);
+              }
+            }
+          }
+          if (cellValues.length > 0) {
+            rows.push(cellValues.join('\t'));
+          }
+        }
+      }
+      extractedText = rows.join('\n').trim() || 'Could not extract text from Excel file.';
     }
 
     const { error: updateError } = await supabaseClient
