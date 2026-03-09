@@ -60,7 +60,7 @@ serve(async (req) => {
 
     let extractedText = '';
     
-    if (document.file_type.includes('text') || document.file_type.includes('json') || document.file_type.includes('markdown') || document.filename?.endsWith('.md')) {
+    if (document.file_type.includes('text') || document.file_type.includes('json') || document.file_type.includes('markdown') || document.file_type.includes('csv') || document.filename?.endsWith('.md') || document.filename?.endsWith('.csv')) {
       extractedText = await fileData.text();
     } else if (document.file_type.includes('pdf')) {
       const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');

@@ -946,21 +946,26 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                           : undefined
                       }
                     >
-                      {/* Render attachments */}
+                      {/* Render attachments with extracted text */}
                       {message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-2 mb-2">
-                          {message.attachments.map((att: any, idx: number) => (
-                            <div key={idx} className="flex items-center gap-2 rounded-lg bg-background/20 backdrop-blur-sm px-3 py-2 text-xs">
-                              {att.type?.startsWith('image/') ? (
-                                <ImageIcon className="h-3.5 w-3.5 shrink-0" />
-                              ) : att.type?.includes('pdf') ? (
-                                <FileText className="h-3.5 w-3.5 shrink-0" />
-                              ) : (
-                                <File className="h-3.5 w-3.5 shrink-0" />
-                              )}
-                              <span className="truncate max-w-[120px]">{att.name || 'File'}</span>
-                            </div>
-                          ))}
+                        <div className="space-y-2 mb-2">
+                          <div className="flex flex-wrap gap-2">
+                            {message.attachments.map((att: any, idx: number) => (
+                              <div key={idx} className="flex items-center gap-2 rounded-lg bg-background/20 backdrop-blur-sm px-3 py-2 text-xs">
+                                {att.type?.startsWith('image/') ? (
+                                  <ImageIcon className="h-3.5 w-3.5 shrink-0" />
+                                ) : att.type?.includes('pdf') ? (
+                                  <FileText className="h-3.5 w-3.5 shrink-0" />
+                                ) : (
+                                  <File className="h-3.5 w-3.5 shrink-0" />
+                                )}
+                                <span className="truncate max-w-[120px]">{att.name || 'File'}</span>
+                                {att.documentId && (
+                                  <DocumentExtractedText documentId={att.documentId} />
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                       <p className="whitespace-pre-wrap">{message.content}</p>
