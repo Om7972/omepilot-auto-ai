@@ -15,6 +15,7 @@ import { MessageReactions } from "@/components/MessageReactions";
 import { CollaborativeNotifications } from "@/components/CollaborativeNotifications";
 import { PinnedMessages } from "@/components/PinnedMessages";
 import { ProactiveSuggestions } from "@/components/ProactiveSuggestions";
+import { DocumentExtractedText } from "@/components/DocumentExtractedText";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
