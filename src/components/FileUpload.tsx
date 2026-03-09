@@ -119,7 +119,7 @@ export const FileUpload = ({ conversationId, onFileUploaded, onCreateConversatio
         id="file-upload"
         className="hidden"
         onChange={handleFileUpload}
-        accept=".pdf,.txt,.doc,.docx,.xlsx,.jpg,.jpeg,.png,.md"
+        accept=".pdf,.txt,.doc,.docx,.xlsx,.csv,.jpg,.jpeg,.png,.md"
         disabled={isUploading}
       />
       <label htmlFor="file-upload">
