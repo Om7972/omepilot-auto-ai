@@ -390,7 +390,16 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
                     {userName.charAt(0).toUpperCase()}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-medium truncate">{userName}</p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-sm font-medium truncate">{userName}</p>
+                      <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[9px] font-semibold leading-none ${
+                        subscribed
+                          ? 'bg-primary/15 text-primary border border-primary/30'
+                          : 'bg-muted text-muted-foreground border border-border'
+                      }`}>
+                        {subLoading ? '…' : currentTier === 'free' ? 'FREE' : 'PRO'}
+                      </span>
+                    </div>
                     <p className="text-[10px] text-muted-foreground truncate -mt-0.5">{userEmail}</p>
                   </div>
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
