@@ -18,6 +18,7 @@ import { KeyboardShortcutsDialog } from "./KeyboardShortcutsDialog";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { useAuth } from "@/contexts/AuthContext";
 import { useConversations } from "@/hooks/useConversations";
+import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
 
 interface SidebarProps {
