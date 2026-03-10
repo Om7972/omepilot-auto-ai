@@ -31,6 +31,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const location = useLocation();
   const { user, profile, signOut } = useAuth();
   const { conversations, refresh: refreshConversations } = useConversations();
+  const { currentTier, subscribed, loading: subLoading } = useSubscription();
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { theme, setTheme } = useTheme();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
