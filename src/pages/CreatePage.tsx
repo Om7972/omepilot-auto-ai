@@ -19,6 +19,7 @@ export default function CreatePage() {
   const [isCollaborative, setIsCollaborative] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [selectedType, setSelectedType] = useState<'conversation' | 'document' | 'image' | 'code'>('conversation');
+  const { subscribed } = useSubscription();
 
   const handleCreate = async () => {
     if (!title.trim()) {
