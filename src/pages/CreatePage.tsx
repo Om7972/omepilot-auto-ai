@@ -263,103 +263,113 @@ export default function CreatePage() {
           </div>
 
           {/* Creation Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle>
-                {selectedType === 'conversation' && 'New Conversation'}
-                {selectedType === 'document' && 'AI Document Generator'}
-                {selectedType === 'image' && 'AI Image Generator'}
-                {selectedType === 'code' && 'Code Assistant'}
-              </CardTitle>
-              <CardDescription>
-                {selectedType === 'conversation' && 'Start a new AI-powered conversation'}
-                {selectedType === 'document' && 'Generate documents with AI assistance'}
-                {selectedType === 'image' && 'Create images using AI models'}
-                {selectedType === 'code' && 'Get help with coding tasks'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">
-                  {selectedType === 'conversation' ? 'Conversation Title' : 
-                   selectedType === 'document' ? 'Document Title' : 
-                   selectedType === 'image' ? 'Image Description' : 
-                   'Code Project Name'}
-                </Label>
-                <Input
-                  id="title"
-                  placeholder={
-                    selectedType === 'conversation' ? 'Enter conversation title...' : 
-                    selectedType === 'document' ? 'e.g., Business Proposal' : 
-                    selectedType === 'image' ? 'e.g., Futuristic cityscape at sunset' : 
-                    'e.g., Login System'
-                  }
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
-              {(selectedType === 'document' || selectedType === 'code') && (
+          {selectedType !== 'conversation' && !subscribed ? (
+            <SubscriptionGate feature={
+              selectedType === 'document' ? 'AI Document Generation' :
+              selectedType === 'image' ? 'AI Image Generation' :
+              'Code Assistant'
+            }>
+              <div />
+            </SubscriptionGate>
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle>
+                  {selectedType === 'conversation' && 'New Conversation'}
+                  {selectedType === 'document' && 'AI Document Generator'}
+                  {selectedType === 'image' && 'AI Image Generator'}
+                  {selectedType === 'code' && 'Code Assistant'}
+                </CardTitle>
+                <CardDescription>
+                  {selectedType === 'conversation' && 'Start a new AI-powered conversation'}
+                  {selectedType === 'document' && 'Generate documents with AI assistance'}
+                  {selectedType === 'image' && 'Create images using AI models'}
+                  {selectedType === 'code' && 'Get help with coding tasks'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
+                  <Label htmlFor="title">
+                    {selectedType === 'conversation' ? 'Conversation Title' : 
+                     selectedType === 'document' ? 'Document Title' : 
+                     selectedType === 'image' ? 'Image Description' : 
+                     'Code Project Name'}
+                  </Label>
+                  <Input
+                    id="title"
                     placeholder={
-                      selectedType === 'document' 
-                        ? 'Describe what you want in the document...' 
-                        : 'Describe the functionality you need...'
+                      selectedType === 'conversation' ? 'Enter conversation title...' : 
+                      selectedType === 'document' ? 'e.g., Business Proposal' : 
+                      selectedType === 'image' ? 'e.g., Futuristic cityscape at sunset' : 
+                      'e.g., Login System'
                     }
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
-              )}
 
-              {selectedType === 'conversation' && (
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="collaborative">Collaborative Mode</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Enable team collaboration
-                    </p>
+                {(selectedType === 'document' || selectedType === 'code') && (
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description (Optional)</Label>
+                    <Textarea
+                      id="description"
+                      placeholder={
+                        selectedType === 'document' 
+                          ? 'Describe what you want in the document...' 
+                          : 'Describe the functionality you need...'
+                      }
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      rows={4}
+                    />
                   </div>
-                  <Switch
-                    id="collaborative"
-                    checked={isCollaborative}
-                    onCheckedChange={setIsCollaborative}
-                  />
-                </div>
-              )}
+                )}
 
-              {selectedType === 'conversation' && isCollaborative && (
-                <div className="bg-muted/50 p-3 rounded-lg flex items-start gap-2">
-                  <Users className="h-4 w-4 text-primary mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium">Collaborative Features</p>
-                    <ul className="text-muted-foreground text-xs space-y-1 mt-1">
-                      <li>• Color-coded messages per user</li>
-                      <li>• Real-time typing indicators</li>
-                      <li>• AI-powered decision summaries</li>
-                      <li>• Invite team members</li>
-                    </ul>
+                {selectedType === 'conversation' && (
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label htmlFor="collaborative">Collaborative Mode</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Enable team collaboration
+                      </p>
+                    </div>
+                    <Switch
+                      id="collaborative"
+                      checked={isCollaborative}
+                      onCheckedChange={setIsCollaborative}
+                    />
                   </div>
-                </div>
-              )}
+                )}
 
-              <Button
-                onClick={handleCreate}
-                disabled={isCreating}
-                className="w-full"
-              >
-                <Sparkles className="h-4 w-4 mr-2" />
-                {selectedType === 'conversation' ? 'Create Conversation' : 
-                 selectedType === 'document' ? 'Generate Document' : 
-                 selectedType === 'image' ? 'Generate Image' : 
-                 'Start Coding'}
-              </Button>
-            </CardContent>
-          </Card>
+                {selectedType === 'conversation' && isCollaborative && (
+                  <div className="bg-muted/50 p-3 rounded-lg flex items-start gap-2">
+                    <Users className="h-4 w-4 text-primary mt-0.5" />
+                    <div className="text-sm">
+                      <p className="font-medium">Collaborative Features</p>
+                      <ul className="text-muted-foreground text-xs space-y-1 mt-1">
+                        <li>• Color-coded messages per user</li>
+                        <li>• Real-time typing indicators</li>
+                        <li>• AI-powered decision summaries</li>
+                        <li>• Invite team members</li>
+                      </ul>
+                    </div>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleCreate}
+                  disabled={isCreating}
+                  className="w-full"
+                >
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  {selectedType === 'conversation' ? 'Create Conversation' : 
+                   selectedType === 'document' ? 'Generate Document' : 
+                   selectedType === 'image' ? 'Generate Image' : 
+                   'Start Coding'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
