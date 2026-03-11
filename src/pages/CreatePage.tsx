@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, MessageSquare, ArrowLeft, FileText, Image, Sparkles, Code } from "lucide-react";
+import { ProBadge, SubscriptionGate } from "@/components/SubscriptionGate";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export default function CreatePage() {
   const navigate = useNavigate();
