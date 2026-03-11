@@ -237,7 +237,7 @@ export default function CreatePage() {
             >
               <CardHeader className="text-center p-4">
                 <FileText className="h-8 w-8 text-primary mx-auto mb-2" />
-                <CardTitle className="text-base">Document</CardTitle>
+                <CardTitle className="text-base flex items-center justify-center gap-1.5">Document <ProBadge /></CardTitle>
               </CardHeader>
             </Card>
 
@@ -247,7 +247,7 @@ export default function CreatePage() {
             >
               <CardHeader className="text-center p-4">
                 <Image className="h-8 w-8 text-primary mx-auto mb-2" />
-                <CardTitle className="text-base">Image</CardTitle>
+                <CardTitle className="text-base flex items-center justify-center gap-1.5">Image <ProBadge /></CardTitle>
               </CardHeader>
             </Card>
 
@@ -257,7 +257,7 @@ export default function CreatePage() {
             >
               <CardHeader className="text-center p-4">
                 <Code className="h-8 w-8 text-primary mx-auto mb-2" />
-                <CardTitle className="text-base">Code</CardTitle>
+                <CardTitle className="text-base flex items-center justify-center gap-1.5">Code <ProBadge /></CardTitle>
               </CardHeader>
             </Card>
           </div>
