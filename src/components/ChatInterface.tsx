@@ -279,6 +279,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const handleSend = async () => {
     if ((!input.trim() && pendingFiles.length === 0) || isLoading || rateLimitedUntil) return;
 
+    // Check daily message limit for free users
+    if (messageLimit.limitReached && !messageLimit.isUnlimited) {
+      toast.error("Daily message limit reached. Upgrade to Pro for unlimited messages.");
+      return;
+    }
+
     const messageText = input.trim();
     const attachments = pendingFiles.map(f => ({ name: f.name, type: f.type, size: f.size, documentId: f.documentId }));
     setInput("");
