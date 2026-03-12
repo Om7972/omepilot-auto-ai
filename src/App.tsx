@@ -19,6 +19,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DocumentationPage from "./pages/DocumentationPage";
 import ContactSupportPage from "./pages/ContactSupportPage";
 import SharedConversation from "./pages/SharedConversation";
+import PricingPage from "./pages/PricingPage";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
