@@ -93,6 +93,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   
   // TTS Hook
   const tts = useTTS();
+  
+  // Message limit for free users
+  const messageLimit = useMessageLimit();
 
   // Rate limit countdown timer
   useEffect(() => {
