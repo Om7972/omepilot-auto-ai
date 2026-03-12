@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTTS } from "@/hooks/useTTS";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMessageLimit } from "@/hooks/useMessageLimit";
+import { MessageLimitBanner } from "@/components/MessageLimitBanner";
 
 interface Message {
   id: string;
