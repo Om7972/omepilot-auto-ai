@@ -878,6 +878,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
         />
       )}
 
+      {/* Message Limit Banner */}
+      <MessageLimitBanner {...messageLimit} />
+
       {/* Rate Limit Banner */}
       {rateLimitCountdown > 0 && (
         <div className="mx-4 mt-2 rounded-lg border border-destructive/30 bg-destructive/10 animate-in slide-in-from-top-2 duration-300 overflow-hidden">

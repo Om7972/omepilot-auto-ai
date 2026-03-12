@@ -117,6 +117,7 @@ const App = () => (
                 <Route path="/documentation" element={<ProtectedRoute><DocumentationPage /></ProtectedRoute>} />
                 <Route path="/contact-support" element={<ProtectedRoute><ContactSupportPage /></ProtectedRoute>} />
                 <Route path="/shared/:conversationId" element={<SharedConversation />} />
+                <Route path="/pricing" element={<PricingPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
