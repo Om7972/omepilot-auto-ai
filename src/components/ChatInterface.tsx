@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useTTS } from "@/hooks/useTTS";
 import { useAuth } from "@/contexts/AuthContext";
+import { useMessageLimit } from "@/hooks/useMessageLimit";
+import { MessageLimitBanner } from "@/components/MessageLimitBanner";
 
 interface Message {
   id: string;
@@ -91,6 +93,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   
   // TTS Hook
   const tts = useTTS();
+  
+  // Message limit for free users
+  const messageLimit = useMessageLimit();
 
   // Rate limit countdown timer
   useEffect(() => {
@@ -274,6 +279,12 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
   const handleSend = async () => {
     if ((!input.trim() && pendingFiles.length === 0) || isLoading || rateLimitedUntil) return;
 
+    // Check daily message limit for free users
+    if (messageLimit.limitReached && !messageLimit.isUnlimited) {
+      toast.error("Daily message limit reached. Upgrade to Pro for unlimited messages.");
+      return;
+    }
+
     const messageText = input.trim();
     const attachments = pendingFiles.map(f => ({ name: f.name, type: f.type, size: f.size, documentId: f.documentId }));
     setInput("");
@@ -376,6 +387,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           toast.error(data.error || 'Failed to send message');
         }
         setInput(messageText);
+      } else {
+        // Message sent successfully — increment daily counter
+        messageLimit.incrementCount();
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
@@ -866,6 +880,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           onUnpin={handleUnpinMessage}
         />
       )}
+
+      {/* Message Limit Banner */}
+      <MessageLimitBanner {...messageLimit} />
 
       {/* Rate Limit Banner */}
       {rateLimitCountdown > 0 && (

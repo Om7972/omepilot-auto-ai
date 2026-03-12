@@ -19,6 +19,7 @@ import ProfilePage from "./pages/ProfilePage";
 import DocumentationPage from "./pages/DocumentationPage";
 import ContactSupportPage from "./pages/ContactSupportPage";
 import SharedConversation from "./pages/SharedConversation";
+import PricingPage from "./pages/PricingPage";
 import NotFound from "./pages/NotFound";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -116,6 +117,7 @@ const App = () => (
                 <Route path="/documentation" element={<ProtectedRoute><DocumentationPage /></ProtectedRoute>} />
                 <Route path="/contact-support" element={<ProtectedRoute><ContactSupportPage /></ProtectedRoute>} />
                 <Route path="/shared/:conversationId" element={<SharedConversation />} />
+                <Route path="/pricing" element={<PricingPage />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
