@@ -387,6 +387,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
           toast.error(data.error || 'Failed to send message');
         }
         setInput(messageText);
+      } else {
+        // Message sent successfully — increment daily counter
+        messageLimit.incrementCount();
       }
     } catch (error: any) {
       console.error('Error sending message:', error);
