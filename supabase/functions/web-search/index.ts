@@ -42,8 +42,8 @@ serve(async (req) => {
 
     const { query } = await req.json();
 
-    // Use Lovable AI with web search capabilities
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const today = new Date().toISOString().split('T')[0];
     
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -56,7 +56,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful research assistant. Provide comprehensive answers with specific facts and cite your sources. Format your response with clear sections and source citations.'
+            content: `You are a helpful research assistant with up-to-date knowledge. Today's date is ${today}. Provide comprehensive, current answers with specific facts, data points, and dates. Format your response with clear sections and cite your sources where possible. Always prioritize the most recent and accurate information available.`
           },
           {
             role: 'user',
