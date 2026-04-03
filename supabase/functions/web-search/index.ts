@@ -56,28 +56,65 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a helpful research assistant with up-to-date knowledge. Today's date is ${today}. Provide comprehensive, current answers with specific facts, data points, and dates. Format your response with clear sections and cite your sources where possible. Always prioritize the most recent and accurate information available.`
+            content: `You are an expert research assistant. Today's date is ${today}. Provide comprehensive, well-structured answers using markdown formatting.
+
+## Response Format Rules:
+1. **Use proper markdown**: headings (##, ###), bold, italic, bullet points, numbered lists, code blocks, and tables where appropriate.
+2. **Structure your answer** with clear sections using headings.
+3. **Cite sources inline** using numbered references like [1], [2], etc.
+4. **At the very end**, include a "## Sources" section listing each numbered reference with its title and URL in this exact format:
+   - [1] Title of Source | https://example.com/url
+   - [2] Another Source | https://another.com/url
+5. **Use real, plausible URLs** based on authoritative sources (Wikipedia, official sites, major news outlets, government sites, research institutions).
+6. **Be comprehensive** but concise. Use bullet points and tables for data-heavy content.
+7. **Always prioritize** the most recent and accurate information available as of ${today}.
+8. **Include specific facts**, numbers, dates, and data points to support your answer.`
           },
           {
             role: 'user',
-            content: query
+            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}`
           }
         ]
       }),
     });
 
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('AI gateway error:', response.status, errorText);
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limited. Please try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      throw new Error('AI gateway error');
+    }
+
     const aiData = await response.json();
     const answer = aiData.choices[0].message.content;
 
-    const citations = answer.match(/\[(\d+)\]/g) || [];
-    const sources = citations.map((c: string, i: number) => ({
-      id: i + 1,
-      citation: c,
-      url: `#source-${i + 1}`
-    }));
+    // Parse sources from the answer's Sources section
+    const sources: { id: number; title: string; url: string }[] = [];
+    const sourceSectionMatch = answer.match(/##\s*Sources?\s*\n([\s\S]*?)$/i);
+    if (sourceSectionMatch) {
+      const sourceLines = sourceSectionMatch[1].split('\n');
+      for (const line of sourceLines) {
+        const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(https?:\/\/\S+)/);
+        if (match) {
+          sources.push({ id: parseInt(match[1]), title: match[2].trim(), url: match[3].trim() });
+        }
+      }
+    }
+
+    // Remove the sources section from the main answer for separate rendering
+    const cleanAnswer = answer.replace(/##\s*Sources?\s*\n[\s\S]*?$/i, '').trim();
 
     return new Response(
-      JSON.stringify({ success: true, answer, sources, query }),
+      JSON.stringify({ success: true, answer: cleanAnswer, sources, query }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
