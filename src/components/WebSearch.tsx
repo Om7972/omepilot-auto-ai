@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X } from "lucide-react";
+import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import { motion, AnimatePresence } from "framer-motion";
@@ -18,6 +18,7 @@ interface SearchResult {
   answer: string;
   sources: Source[];
   query: string;
+  followUps?: string[];
 }
 
 interface SearchHistoryItem {
