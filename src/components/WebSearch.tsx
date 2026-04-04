@@ -61,6 +61,7 @@ export const WebSearch = () => {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [searchTime, setSearchTime] = useState<number | null>(null);
   const [history, setHistory] = useState<SearchHistoryItem[]>(getHistory());
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setHistory(getHistory());
