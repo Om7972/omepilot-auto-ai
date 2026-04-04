@@ -290,6 +290,17 @@ export const WebSearch = () => {
               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary hover:prose-a:text-primary/80 prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-table:text-sm prose-th:bg-muted/50 prose-th:p-2 prose-td:p-2 prose-tr:border-border">
                 <ReactMarkdown>{result.answer}</ReactMarkdown>
               </div>
+              {/* Copy & Share buttons */}
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
+                <Button variant="outline" size="sm" onClick={handleCopyAnswer} className="gap-1.5">
+                  {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                  {copied ? "Copied" : "Copy answer"}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleShareResults} className="gap-1.5">
+                  <Share2 className="h-3.5 w-3.5" />
+                  Share results
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
@@ -325,6 +336,35 @@ export const WebSearch = () => {
                       </div>
                       <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-1 transition-colors" />
                     </a>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Follow-Up Questions */}
+          {result.followUps && result.followUps.length > 0 && (
+            <Card className="bg-card border-border shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Explore further
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid gap-2">
+                  {result.followUps.map((q, i) => (
+                    <motion.button
+                      key={q}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.1 }}
+                      onClick={() => performSearch(q)}
+                      className="group flex items-center gap-3 p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-accent/50 transition-all text-left"
+                    >
+                      <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary flex-shrink-0 transition-colors" />
+                      <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">{q}</span>
+                    </motion.button>
                   ))}
                 </div>
               </CardContent>
