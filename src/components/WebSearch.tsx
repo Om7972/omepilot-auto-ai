@@ -111,6 +111,31 @@ export const WebSearch = () => {
     toast.success("Search history cleared");
   };
 
+  const handleCopyAnswer = async () => {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result.answer);
+      setCopied(true);
+      toast.success("Answer copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleShareResults = async () => {
+    if (!result) return;
+    const text = `${result.answer}\n\nSources:\n${result.sources.map(s => `[${s.id}] ${s.title} - ${s.url}`).join('\n')}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Search: ${result.query}`, text });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(text);
+      toast.success("Results copied to clipboard for sharing");
+    }
+  };
+
   const getDomain = (url: string) => {
     try {
       return new URL(url).hostname.replace('www.', '');
