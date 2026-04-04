@@ -72,7 +72,11 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}`
+            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}
+
+After your main answer and sources section, add a final section:
+## Follow-Up Questions
+List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
           }
         ]
       }),
@@ -110,11 +114,25 @@ serve(async (req) => {
       }
     }
 
-    // Remove the sources section from the main answer for separate rendering
-    const cleanAnswer = answer.replace(/##\s*Sources?\s*\n[\s\S]*?$/i, '').trim();
+    // Parse follow-up questions
+    const followUps: string[] = [];
+    const followUpMatch = answer.match(/##\s*Follow[- ]?Up\s*Questions?\s*\n([\s\S]*?)(?=##|$)/i);
+    if (followUpMatch) {
+      const lines = followUpMatch[1].split('\n');
+      for (const line of lines) {
+        const q = line.replace(/^[-*]\s*/, '').trim();
+        if (q && q.length > 5) followUps.push(q);
+      }
+    }
+
+    // Remove sources and follow-up sections from the main answer
+    const cleanAnswer = answer
+      .replace(/##\s*Follow[- ]?Up\s*Questions?\s*\n[\s\S]*?$/i, '')
+      .replace(/##\s*Sources?\s*\n[\s\S]*?$/i, '')
+      .trim();
 
     return new Response(
-      JSON.stringify({ success: true, answer: cleanAnswer, sources, query }),
+      JSON.stringify({ success: true, answer: cleanAnswer, sources, query, followUps: followUps.slice(0, 3) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
