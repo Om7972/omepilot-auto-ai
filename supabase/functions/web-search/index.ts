@@ -72,7 +72,11 @@ serve(async (req) => {
           },
           {
             role: 'user',
-            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}`
+            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}
+
+After your main answer and sources section, add a final section:
+## Follow-Up Questions
+List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
           }
         ]
       }),
