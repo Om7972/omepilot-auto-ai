@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight, Bookmark, BookmarkCheck } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { motion } from "framer-motion";
 import type { SearchResult, SavedSearch } from "./web-search/types";
 import { useSearchStorage } from "./web-search/useSearchStorage";
