@@ -12,6 +12,7 @@ import type { SearchResult, SavedSearch } from "./web-search/types";
 import { useSearchStorage } from "./web-search/useSearchStorage";
 import { SavedSearches } from "./web-search/SavedSearches";
 import { ImageResults } from "./web-search/ImageResults";
+import { ExportSavedSearches } from "./web-search/ExportSavedSearches";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
