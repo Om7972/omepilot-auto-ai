@@ -68,15 +68,19 @@ serve(async (req) => {
 5. **Use real, plausible URLs** based on authoritative sources (Wikipedia, official sites, major news outlets, government sites, research institutions).
 6. **Be comprehensive** but concise. Use bullet points and tables for data-heavy content.
 7. **Always prioritize** the most recent and accurate information available as of ${today}.
-8. **Include specific facts**, numbers, dates, and data points to support your answer.`
+8. **Include specific facts**, numbers, dates, and data points to support your answer.
+
+After your sources section, add:
+## Images
+List 3-6 relevant images with descriptive titles and real image URLs from Wikimedia Commons, official sites, or known public image sources. Format:
+- [img] Descriptive Title | https://upload.wikimedia.org/... | https://source-page-url
+
+## Follow-Up Questions
+List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
           },
           {
             role: 'user',
-            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}
-
-After your main answer and sources section, add a final section:
-## Follow-Up Questions
-List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
+            content: `Research the following topic thoroughly and provide a well-cited answer with relevant images: ${query}`
           }
         ]
       }),
