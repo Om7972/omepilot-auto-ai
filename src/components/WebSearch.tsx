@@ -120,10 +120,13 @@ export const WebSearch = () => {
               <CardDescription>Get comprehensive, cited answers powered by AI reasoning</CardDescription>
             </div>
             {saved.length > 0 && (
-              <Button variant="outline" size="sm" onClick={() => setShowSaved(!showSaved)} className="gap-1.5">
-                <Bookmark className="h-3.5 w-3.5" />
-                Saved ({saved.length})
-              </Button>
+              <div className="flex items-center gap-2">
+                <ExportSavedSearches saved={saved} />
+                <Button variant="outline" size="sm" onClick={() => setShowSaved(!showSaved)} className="gap-1.5">
+                  <Bookmark className="h-3.5 w-3.5" />
+                  Saved ({saved.length})
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
