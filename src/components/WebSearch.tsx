@@ -206,7 +206,7 @@ export const WebSearch = () => {
           <Card className="bg-card border-border shadow-sm">
             <CardContent className="pt-6">
               <div className="prose prose-sm max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-foreground/90 prose-li:text-foreground/90 prose-strong:text-foreground prose-a:text-primary hover:prose-a:text-primary/80 prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-pre:bg-muted prose-pre:border prose-pre:border-border prose-table:text-sm prose-th:bg-muted/50 prose-th:p-2 prose-td:p-2 prose-tr:border-border">
-                <ReactMarkdown>{result.answer}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{result.answer}</ReactMarkdown>
               </div>
               <div className="flex items-center gap-2 mt-4 pt-4 border-t border-border">
                 <Button variant="outline" size="sm" onClick={handleCopyAnswer} className="gap-1.5">
