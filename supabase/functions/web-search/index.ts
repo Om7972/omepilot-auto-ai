@@ -68,15 +68,19 @@ serve(async (req) => {
 5. **Use real, plausible URLs** based on authoritative sources (Wikipedia, official sites, major news outlets, government sites, research institutions).
 6. **Be comprehensive** but concise. Use bullet points and tables for data-heavy content.
 7. **Always prioritize** the most recent and accurate information available as of ${today}.
-8. **Include specific facts**, numbers, dates, and data points to support your answer.`
+8. **Include specific facts**, numbers, dates, and data points to support your answer.
+
+After your sources section, add:
+## Images
+List 3-6 relevant images with descriptive titles and real image URLs from Wikimedia Commons, official sites, or known public image sources. Format:
+- [img] Descriptive Title | https://upload.wikimedia.org/... | https://source-page-url
+
+## Follow-Up Questions
+List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
           },
           {
             role: 'user',
-            content: `Research the following topic thoroughly and provide a well-cited answer: ${query}
-
-After your main answer and sources section, add a final section:
-## Follow-Up Questions
-List exactly 3 concise follow-up questions the user might want to explore next, each on its own line starting with "- ".`
+            content: `Research the following topic thoroughly and provide a well-cited answer with relevant images: ${query}`
           }
         ]
       }),
@@ -101,16 +105,23 @@ List exactly 3 concise follow-up questions the user might want to explore next, 
     const aiData = await response.json();
     const answer = aiData.choices[0].message.content;
 
-    // Parse sources from the answer's Sources section
+    // Parse sources
     const sources: { id: number; title: string; url: string }[] = [];
-    const sourceSectionMatch = answer.match(/##\s*Sources?\s*\n([\s\S]*?)$/i);
+    const sourceSectionMatch = answer.match(/##\s*Sources?\s*\n([\s\S]*?)(?=##|$)/i);
     if (sourceSectionMatch) {
-      const sourceLines = sourceSectionMatch[1].split('\n');
-      for (const line of sourceLines) {
+      for (const line of sourceSectionMatch[1].split('\n')) {
         const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(https?:\/\/\S+)/);
-        if (match) {
-          sources.push({ id: parseInt(match[1]), title: match[2].trim(), url: match[3].trim() });
-        }
+        if (match) sources.push({ id: parseInt(match[1]), title: match[2].trim(), url: match[3].trim() });
+      }
+    }
+
+    // Parse images
+    const images: { title: string; url: string; sourceUrl: string }[] = [];
+    const imgMatch = answer.match(/##\s*Images?\s*\n([\s\S]*?)(?=##|$)/i);
+    if (imgMatch) {
+      for (const line of imgMatch[1].split('\n')) {
+        const m = line.match(/\[img\]\s*(.+?)\s*\|\s*(https?:\/\/\S+)\s*\|\s*(https?:\/\/\S+)/);
+        if (m) images.push({ title: m[1].trim(), url: m[2].trim(), sourceUrl: m[3].trim() });
       }
     }
 
@@ -118,21 +129,21 @@ List exactly 3 concise follow-up questions the user might want to explore next, 
     const followUps: string[] = [];
     const followUpMatch = answer.match(/##\s*Follow[- ]?Up\s*Questions?\s*\n([\s\S]*?)(?=##|$)/i);
     if (followUpMatch) {
-      const lines = followUpMatch[1].split('\n');
-      for (const line of lines) {
+      for (const line of followUpMatch[1].split('\n')) {
         const q = line.replace(/^[-*]\s*/, '').trim();
         if (q && q.length > 5) followUps.push(q);
       }
     }
 
-    // Remove sources and follow-up sections from the main answer
+    // Clean answer
     const cleanAnswer = answer
       .replace(/##\s*Follow[- ]?Up\s*Questions?\s*\n[\s\S]*?$/i, '')
-      .replace(/##\s*Sources?\s*\n[\s\S]*?$/i, '')
+      .replace(/##\s*Images?\s*\n[\s\S]*?(?=##|$)/i, '')
+      .replace(/##\s*Sources?\s*\n[\s\S]*?(?=##|$)/i, '')
       .trim();
 
     return new Response(
-      JSON.stringify({ success: true, answer: cleanAnswer, sources, query, followUps: followUps.slice(0, 3) }),
+      JSON.stringify({ success: true, answer: cleanAnswer, sources, images, query, followUps: followUps.slice(0, 3) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
