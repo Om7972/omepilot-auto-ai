@@ -105,16 +105,23 @@ List exactly 3 concise follow-up questions the user might want to explore next, 
     const aiData = await response.json();
     const answer = aiData.choices[0].message.content;
 
-    // Parse sources from the answer's Sources section
+    // Parse sources
     const sources: { id: number; title: string; url: string }[] = [];
-    const sourceSectionMatch = answer.match(/##\s*Sources?\s*\n([\s\S]*?)$/i);
+    const sourceSectionMatch = answer.match(/##\s*Sources?\s*\n([\s\S]*?)(?=##|$)/i);
     if (sourceSectionMatch) {
-      const sourceLines = sourceSectionMatch[1].split('\n');
-      for (const line of sourceLines) {
+      for (const line of sourceSectionMatch[1].split('\n')) {
         const match = line.match(/\[(\d+)\]\s*(.+?)\s*\|\s*(https?:\/\/\S+)/);
-        if (match) {
-          sources.push({ id: parseInt(match[1]), title: match[2].trim(), url: match[3].trim() });
-        }
+        if (match) sources.push({ id: parseInt(match[1]), title: match[2].trim(), url: match[3].trim() });
+      }
+    }
+
+    // Parse images
+    const images: { title: string; url: string; sourceUrl: string }[] = [];
+    const imgMatch = answer.match(/##\s*Images?\s*\n([\s\S]*?)(?=##|$)/i);
+    if (imgMatch) {
+      for (const line of imgMatch[1].split('\n')) {
+        const m = line.match(/\[img\]\s*(.+?)\s*\|\s*(https?:\/\/\S+)\s*\|\s*(https?:\/\/\S+)/);
+        if (m) images.push({ title: m[1].trim(), url: m[2].trim(), sourceUrl: m[3].trim() });
       }
     }
 
@@ -122,21 +129,21 @@ List exactly 3 concise follow-up questions the user might want to explore next, 
     const followUps: string[] = [];
     const followUpMatch = answer.match(/##\s*Follow[- ]?Up\s*Questions?\s*\n([\s\S]*?)(?=##|$)/i);
     if (followUpMatch) {
-      const lines = followUpMatch[1].split('\n');
-      for (const line of lines) {
+      for (const line of followUpMatch[1].split('\n')) {
         const q = line.replace(/^[-*]\s*/, '').trim();
         if (q && q.length > 5) followUps.push(q);
       }
     }
 
-    // Remove sources and follow-up sections from the main answer
+    // Clean answer
     const cleanAnswer = answer
       .replace(/##\s*Follow[- ]?Up\s*Questions?\s*\n[\s\S]*?$/i, '')
-      .replace(/##\s*Sources?\s*\n[\s\S]*?$/i, '')
+      .replace(/##\s*Images?\s*\n[\s\S]*?(?=##|$)/i, '')
+      .replace(/##\s*Sources?\s*\n[\s\S]*?(?=##|$)/i, '')
       .trim();
 
     return new Response(
-      JSON.stringify({ success: true, answer: cleanAnswer, sources, query, followUps: followUps.slice(0, 3) }),
+      JSON.stringify({ success: true, answer: cleanAnswer, sources, images, query, followUps: followUps.slice(0, 3) }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
