@@ -13,6 +13,8 @@ import { useSearchStorage } from "./web-search/useSearchStorage";
 import { SavedSearches } from "./web-search/SavedSearches";
 import { ImageResults } from "./web-search/ImageResults";
 import { ExportSavedSearches } from "./web-search/ExportSavedSearches";
+import { PaginatedSources } from "./web-search/PaginatedSources";
+import { CompareSearches } from "./web-search/CompareSearches";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
