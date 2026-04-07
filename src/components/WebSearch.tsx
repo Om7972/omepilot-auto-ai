@@ -166,6 +166,9 @@ export const WebSearch = () => {
       {/* Saved Searches Panel */}
       {showSaved && !isSearching && <SavedSearches saved={saved} onLoad={handleLoadSaved} onRemove={removeSaved} />}
 
+      {/* Compare View */}
+      {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
+
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
         <Card className="bg-card border-border shadow-sm">
