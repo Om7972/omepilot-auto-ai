@@ -31,6 +31,7 @@ export const WebSearch = () => {
   const [searchTime, setSearchTime] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
 
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
 
@@ -124,7 +125,13 @@ export const WebSearch = () => {
             {saved.length > 0 && (
               <div className="flex items-center gap-2">
                 <ExportSavedSearches saved={saved} />
-                <Button variant="outline" size="sm" onClick={() => setShowSaved(!showSaved)} className="gap-1.5">
+                {saved.length >= 2 && (
+                  <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                    <Columns2 className="h-3.5 w-3.5" />
+                    Compare
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
                   <Bookmark className="h-3.5 w-3.5" />
                   Saved ({saved.length})
                 </Button>
