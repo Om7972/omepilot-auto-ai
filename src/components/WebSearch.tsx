@@ -244,29 +244,7 @@ export const WebSearch = () => {
           {result.images && result.images.length > 0 && <ImageResults images={result.images} />}
 
           {/* Sources */}
-          {result.sources.length > 0 && (
-            <Card className="bg-card border-border shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 text-primary" /> Sources ({result.sources.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-2">
-                  {result.sources.map((source) => (
-                    <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors group">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">{source.id}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">{source.title}</p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{getDomain(source.url)}</p>
-                      </div>
-                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-1 transition-colors" />
-                    </a>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <PaginatedSources sources={result.sources} />
 
           {/* Follow-Up Questions */}
           {result.followUps && result.followUps.length > 0 && (
