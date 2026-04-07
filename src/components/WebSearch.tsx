@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight, Bookmark, BookmarkCheck } from "lucide-react";
+import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight, Bookmark, BookmarkCheck, Columns2 } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -13,6 +13,8 @@ import { useSearchStorage } from "./web-search/useSearchStorage";
 import { SavedSearches } from "./web-search/SavedSearches";
 import { ImageResults } from "./web-search/ImageResults";
 import { ExportSavedSearches } from "./web-search/ExportSavedSearches";
+import { PaginatedSources } from "./web-search/PaginatedSources";
+import { CompareSearches } from "./web-search/CompareSearches";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
@@ -29,6 +31,7 @@ export const WebSearch = () => {
   const [searchTime, setSearchTime] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
+  const [showCompare, setShowCompare] = useState(false);
 
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
 
@@ -122,7 +125,13 @@ export const WebSearch = () => {
             {saved.length > 0 && (
               <div className="flex items-center gap-2">
                 <ExportSavedSearches saved={saved} />
-                <Button variant="outline" size="sm" onClick={() => setShowSaved(!showSaved)} className="gap-1.5">
+                {saved.length >= 2 && (
+                  <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                    <Columns2 className="h-3.5 w-3.5" />
+                    Compare
+                  </Button>
+                )}
+                <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
                   <Bookmark className="h-3.5 w-3.5" />
                   Saved ({saved.length})
                 </Button>
@@ -156,6 +165,9 @@ export const WebSearch = () => {
 
       {/* Saved Searches Panel */}
       {showSaved && !isSearching && <SavedSearches saved={saved} onLoad={handleLoadSaved} onRemove={removeSaved} />}
+
+      {/* Compare View */}
+      {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
 
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
@@ -232,29 +244,7 @@ export const WebSearch = () => {
           {result.images && result.images.length > 0 && <ImageResults images={result.images} />}
 
           {/* Sources */}
-          {result.sources.length > 0 && (
-            <Card className="bg-card border-border shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <ExternalLink className="h-4 w-4 text-primary" /> Sources ({result.sources.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-2">
-                  {result.sources.map((source) => (
-                    <a key={source.id} href={source.url} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-accent/50 transition-colors group">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold flex items-center justify-center mt-0.5">{source.id}</span>
-                      <div className="min-w-0 flex-1">
-                        <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors truncate">{source.title}</p>
-                        <p className="text-xs text-muted-foreground truncate mt-0.5">{getDomain(source.url)}</p>
-                      </div>
-                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0 mt-1 transition-colors" />
-                    </a>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+          <PaginatedSources sources={result.sources} />
 
           {/* Follow-Up Questions */}
           {result.followUps && result.followUps.length > 0 && (
