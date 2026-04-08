@@ -17,6 +17,8 @@ import { PaginatedSources } from "./web-search/PaginatedSources";
 import { CompareSearches } from "./web-search/CompareSearches";
 import { VoiceSearchButton } from "./web-search/VoiceSearchButton";
 import { SearchFilters, DEFAULT_FILTERS, type SearchFilterValues } from "./web-search/SearchFilters";
+import { SearchAutocomplete } from "./web-search/SearchAutocomplete";
+import { ReadAloudButton } from "./web-search/ReadAloudButton";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
