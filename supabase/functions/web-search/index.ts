@@ -40,11 +40,13 @@ serve(async (req) => {
       );
     }
 
-    const { query } = await req.json();
+    const { query, filters } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     const today = new Date().toISOString().split('T')[0];
     
+    const filterInstruction = filters ? `\n\nApply these filters to your research:\n- ${filters}\nPrioritize sources and information matching these constraints.` : '';
+
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -80,7 +82,7 @@ List exactly 3 concise follow-up questions the user might want to explore next, 
           },
           {
             role: 'user',
-            content: `Research the following topic thoroughly and provide a well-cited answer with relevant images: ${query}`
+            content: `Research the following topic thoroughly and provide a well-cited answer with relevant images: ${query}${filterInstruction}`
           }
         ]
       }),

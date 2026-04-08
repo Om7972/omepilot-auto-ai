@@ -15,6 +15,8 @@ import { ImageResults } from "./web-search/ImageResults";
 import { ExportSavedSearches } from "./web-search/ExportSavedSearches";
 import { PaginatedSources } from "./web-search/PaginatedSources";
 import { CompareSearches } from "./web-search/CompareSearches";
+import { VoiceSearchButton } from "./web-search/VoiceSearchButton";
+import { SearchFilters, DEFAULT_FILTERS, type SearchFilterValues } from "./web-search/SearchFilters";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
@@ -32,7 +34,7 @@ export const WebSearch = () => {
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
-
+  const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
 
   const performSearch = async (searchQuery?: string) => {
@@ -44,7 +46,11 @@ export const WebSearch = () => {
     setShowSaved(false);
     const startTime = Date.now();
     try {
-      const { data, error } = await supabase.functions.invoke('web-search', { body: { query: q } });
+      const filterContext = [];
+      if (filters.dateRange !== "any") filterContext.push(`Time: ${filters.dateRange}`);
+      if (filters.sourceType !== "any") filterContext.push(`Sources: ${filters.sourceType}`);
+      if (filters.category !== "any") filterContext.push(`Category: ${filters.category}`);
+      const { data, error } = await supabase.functions.invoke('web-search', { body: { query: q, filters: filterContext.length > 0 ? filterContext.join(", ") : undefined } });
       if (error) throw error;
       setResult(data);
       setSearchTime(Date.now() - startTime);
@@ -140,15 +146,21 @@ export const WebSearch = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Ask anything — news, research, trends, facts..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} className="pl-10 bg-background h-11 text-base" />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Ask anything — news, research, trends, facts..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} className="pl-10 bg-background h-11 text-base" />
+              </div>
+              <VoiceSearchButton
+                onTranscript={(text) => { setQuery(text); performSearch(text); }}
+                disabled={isSearching}
+              />
+              <Button onClick={() => performSearch()} disabled={isSearching || !query.trim()} size="lg" className="px-6">
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+              </Button>
             </div>
-            <Button onClick={() => performSearch()} disabled={isSearching || !query.trim()} size="lg" className="px-6">
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-            </Button>
-          </div>
+
+            <SearchFilters filters={filters} onChange={setFilters} />
 
           {!result && !isSearching && (
             <div className="flex flex-wrap gap-2">
