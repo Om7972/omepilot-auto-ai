@@ -146,15 +146,21 @@ export const WebSearch = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Ask anything — news, research, trends, facts..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} className="pl-10 bg-background h-11 text-base" />
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Ask anything — news, research, trends, facts..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} className="pl-10 bg-background h-11 text-base" />
+              </div>
+              <VoiceSearchButton
+                onTranscript={(text) => { setQuery(text); performSearch(text); }}
+                disabled={isSearching}
+              />
+              <Button onClick={() => performSearch()} disabled={isSearching || !query.trim()} size="lg" className="px-6">
+                {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
+              </Button>
             </div>
-            <Button onClick={() => performSearch()} disabled={isSearching || !query.trim()} size="lg" className="px-6">
-              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
-            </Button>
-          </div>
+
+            <SearchFilters filters={filters} onChange={setFilters} />
 
           {!result && !isSearching && (
             <div className="flex flex-wrap gap-2">
