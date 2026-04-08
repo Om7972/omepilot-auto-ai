@@ -149,10 +149,14 @@ export const WebSearch = () => {
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Ask anything — news, research, trends, facts..." value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} className="pl-10 bg-background h-11 text-base" />
-              </div>
+              <SearchAutocomplete
+                query={query}
+                onChange={setQuery}
+                onSearch={performSearch}
+                onKeyDown={handleKeyDown}
+                history={history}
+                disabled={isSearching}
+              />
               <VoiceSearchButton
                 onTranscript={(text) => { setQuery(text); performSearch(text); }}
                 disabled={isSearching}
