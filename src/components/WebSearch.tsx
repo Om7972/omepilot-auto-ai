@@ -46,7 +46,11 @@ export const WebSearch = () => {
     setShowSaved(false);
     const startTime = Date.now();
     try {
-      const { data, error } = await supabase.functions.invoke('web-search', { body: { query: q } });
+      const filterContext = [];
+      if (filters.dateRange !== "any") filterContext.push(`Time: ${filters.dateRange}`);
+      if (filters.sourceType !== "any") filterContext.push(`Sources: ${filters.sourceType}`);
+      if (filters.category !== "any") filterContext.push(`Category: ${filters.category}`);
+      const { data, error } = await supabase.functions.invoke('web-search', { body: { query: q, filters: filterContext.length > 0 ? filterContext.join(", ") : undefined } });
       if (error) throw error;
       setResult(data);
       setSearchTime(Date.now() - startTime);
