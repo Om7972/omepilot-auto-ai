@@ -34,7 +34,7 @@ export const WebSearch = () => {
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
-
+  const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
 
   const performSearch = async (searchQuery?: string) => {
