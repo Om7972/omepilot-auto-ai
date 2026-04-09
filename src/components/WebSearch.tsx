@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +19,10 @@ import { VoiceSearchButton } from "./web-search/VoiceSearchButton";
 import { SearchFilters, DEFAULT_FILTERS, type SearchFilterValues } from "./web-search/SearchFilters";
 import { SearchAutocomplete } from "./web-search/SearchAutocomplete";
 import { ReadAloudButton } from "./web-search/ReadAloudButton";
+import { useTheme } from "@/components/ThemeProvider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Moon, Sun } from "lucide-react";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
@@ -38,6 +42,30 @@ export const WebSearch = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
+  const { theme, setTheme } = useTheme();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcuts: Ctrl+K to focus, Escape to clear
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        const target = e.target as HTMLElement;
+        if (target === searchInputRef.current) {
+          if (query) {
+            setQuery('');
+          } else {
+            searchInputRef.current?.blur();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [query]);
 
   const performSearch = async (searchQuery?: string) => {
     const q = (searchQuery || query).trim();
@@ -128,23 +156,34 @@ export const WebSearch = () => {
                 </div>
                 AI-Powered Web Search
               </CardTitle>
-              <CardDescription>Get comprehensive, cited answers powered by AI reasoning</CardDescription>
+              <CardDescription>Get comprehensive, cited answers powered by AI reasoning · <kbd className="text-[10px] px-1 py-0.5 rounded border border-border bg-muted">⌘K</kbd> to focus</CardDescription>
             </div>
-            {saved.length > 0 && (
-              <div className="flex items-center gap-2">
-                <ExportSavedSearches saved={saved} />
-                {saved.length >= 2 && (
-                  <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
-                    <Columns2 className="h-3.5 w-3.5" />
-                    Compare
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
-                  <Bookmark className="h-3.5 w-3.5" />
-                  Saved ({saved.length})
-                </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Sun className="h-3.5 w-3.5 text-muted-foreground" />
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                  aria-label="Toggle dark mode"
+                />
+                <Moon className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
-            )}
+              {saved.length > 0 && (
+                <>
+                  <ExportSavedSearches saved={saved} />
+                  {saved.length >= 2 && (
+                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                      <Columns2 className="h-3.5 w-3.5" />
+                      Compare
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
+                    <Bookmark className="h-3.5 w-3.5" />
+                    Saved ({saved.length})
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -156,6 +195,7 @@ export const WebSearch = () => {
                 onKeyDown={handleKeyDown}
                 history={history}
                 disabled={isSearching}
+                inputRef={searchInputRef}
               />
               <VoiceSearchButton
                 onTranscript={(text) => { setQuery(text); performSearch(text); }}
