@@ -19,6 +19,10 @@ import { VoiceSearchButton } from "./web-search/VoiceSearchButton";
 import { SearchFilters, DEFAULT_FILTERS, type SearchFilterValues } from "./web-search/SearchFilters";
 import { SearchAutocomplete } from "./web-search/SearchAutocomplete";
 import { ReadAloudButton } from "./web-search/ReadAloudButton";
+import { useTheme } from "@/components/ThemeProvider";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Moon, Sun } from "lucide-react";
 
 const SUGGESTED_QUERIES = [
   { text: "Trending news today", icon: Newspaper, color: "text-red-400" },
@@ -38,6 +42,30 @@ export const WebSearch = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
+  const { theme, setTheme } = useTheme();
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard shortcuts: Ctrl+K to focus, Escape to clear
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+      if (e.key === 'Escape') {
+        const target = e.target as HTMLElement;
+        if (target === searchInputRef.current) {
+          if (query) {
+            setQuery('');
+          } else {
+            searchInputRef.current?.blur();
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [query]);
 
   const performSearch = async (searchQuery?: string) => {
     const q = (searchQuery || query).trim();
