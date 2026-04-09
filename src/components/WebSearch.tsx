@@ -183,7 +183,7 @@ export const WebSearch = () => {
                   </Button>
                 </>
               )}
-          </div>
+            </div>
         </CardHeader>
         <CardContent className="space-y-4">
             <div className="flex gap-2">
