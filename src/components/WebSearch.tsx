@@ -233,6 +233,8 @@ export const WebSearch = () => {
       {/* Compare View */}
       {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
 
+      {/* Analytics */}
+      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} />}
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
         <Card className="bg-card border-border shadow-sm">
