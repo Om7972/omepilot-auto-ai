@@ -156,23 +156,33 @@ export const WebSearch = () => {
                 </div>
                 AI-Powered Web Search
               </CardTitle>
-              <CardDescription>Get comprehensive, cited answers powered by AI reasoning</CardDescription>
+              <CardDescription>Get comprehensive, cited answers powered by AI reasoning · <kbd className="text-[10px] px-1 py-0.5 rounded border border-border bg-muted">⌘K</kbd> to focus</CardDescription>
             </div>
-            {saved.length > 0 && (
-              <div className="flex items-center gap-2">
-                <ExportSavedSearches saved={saved} />
-                {saved.length >= 2 && (
-                  <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
-                    <Columns2 className="h-3.5 w-3.5" />
-                    Compare
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
-                  <Bookmark className="h-3.5 w-3.5" />
-                  Saved ({saved.length})
-                </Button>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <Sun className="h-3.5 w-3.5 text-muted-foreground" />
+                <Switch
+                  checked={theme === "dark"}
+                  onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
+                  aria-label="Toggle dark mode"
+                />
+                <Moon className="h-3.5 w-3.5 text-muted-foreground" />
               </div>
-            )}
+              {saved.length > 0 && (
+                <>
+                  <ExportSavedSearches saved={saved} />
+                  {saved.length >= 2 && (
+                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                      <Columns2 className="h-3.5 w-3.5" />
+                      Compare
+                    </Button>
+                  )}
+                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
+                    <Bookmark className="h-3.5 w-3.5" />
+                    Saved ({saved.length})
+                  </Button>
+                </>
+              )}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
