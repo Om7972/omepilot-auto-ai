@@ -19,7 +19,7 @@ export default function SearchPage() {
           <h1 className="text-xl font-semibold">Search</h1>
           <p className="text-sm text-muted-foreground">Find conversations, messages, or search the web</p>
         </div>
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-x-hidden overflow-y-auto p-6">
           <Tabs defaultValue="conversations" className="w-full">
             <TabsList className="mb-6">
               <TabsTrigger value="conversations" className="gap-2">
