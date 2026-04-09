@@ -41,6 +41,7 @@ export const WebSearch = () => {
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
   const { theme, setTheme } = useTheme();
@@ -173,17 +174,21 @@ export const WebSearch = () => {
                 <>
                   <ExportSavedSearches saved={saved} />
                   {saved.length >= 2 && (
-                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); setShowAnalytics(false); }} className="gap-1.5">
                       <Columns2 className="h-3.5 w-3.5" />
                       Compare
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); setShowAnalytics(false); }} className="gap-1.5">
                     <Bookmark className="h-3.5 w-3.5" />
                     Saved ({saved.length})
                   </Button>
                 </>
               )}
+              <Button variant={showAnalytics ? "default" : "outline"} size="sm" onClick={() => { setShowAnalytics(!showAnalytics); setShowSaved(false); setShowCompare(false); }} className="gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                Analytics
+              </Button>
             </div>
           </div>
         </CardHeader>
