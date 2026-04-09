@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight, Bookmark, BookmarkCheck, Columns2 } from "lucide-react";
+import { Search, Loader2, ExternalLink, Globe, Clock, Sparkles, TrendingUp, BarChart3, Cpu, Lightbulb, Newspaper, History, X, Copy, Share2, Check, ArrowRight, Bookmark, BookmarkCheck, Columns2, Activity } from "lucide-react";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -19,6 +19,7 @@ import { VoiceSearchButton } from "./web-search/VoiceSearchButton";
 import { SearchFilters, DEFAULT_FILTERS, type SearchFilterValues } from "./web-search/SearchFilters";
 import { SearchAutocomplete } from "./web-search/SearchAutocomplete";
 import { ReadAloudButton } from "./web-search/ReadAloudButton";
+import { SearchAnalytics } from "./web-search/SearchAnalytics";
 import { useTheme } from "@/components/ThemeProvider";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -40,6 +41,7 @@ export const WebSearch = () => {
   const [copied, setCopied] = useState(false);
   const [showSaved, setShowSaved] = useState(false);
   const [showCompare, setShowCompare] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
   const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
   const { theme, setTheme } = useTheme();
@@ -172,17 +174,21 @@ export const WebSearch = () => {
                 <>
                   <ExportSavedSearches saved={saved} />
                   {saved.length >= 2 && (
-                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); }} className="gap-1.5">
+                    <Button variant="outline" size="sm" onClick={() => { setShowCompare(!showCompare); setShowSaved(false); setShowAnalytics(false); }} className="gap-1.5">
                       <Columns2 className="h-3.5 w-3.5" />
                       Compare
                     </Button>
                   )}
-                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); }} className="gap-1.5">
+                  <Button variant="outline" size="sm" onClick={() => { setShowSaved(!showSaved); setShowCompare(false); setShowAnalytics(false); }} className="gap-1.5">
                     <Bookmark className="h-3.5 w-3.5" />
                     Saved ({saved.length})
                   </Button>
                 </>
               )}
+              <Button variant={showAnalytics ? "default" : "outline"} size="sm" onClick={() => { setShowAnalytics(!showAnalytics); setShowSaved(false); setShowCompare(false); }} className="gap-1.5">
+                <Activity className="h-3.5 w-3.5" />
+                Analytics
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -227,6 +233,8 @@ export const WebSearch = () => {
       {/* Compare View */}
       {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
 
+      {/* Analytics */}
+      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} />}
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
         <Card className="bg-card border-border shadow-sm">
