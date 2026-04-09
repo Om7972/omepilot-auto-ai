@@ -10,6 +10,7 @@ interface Props {
   onKeyDown: (e: React.KeyboardEvent) => void;
   history: { query: string; timestamp: number }[];
   disabled?: boolean;
+  inputRef?: React.RefObject<HTMLInputElement>;
 }
 
 const POPULAR_SUGGESTIONS = [
@@ -23,11 +24,12 @@ const POPULAR_SUGGESTIONS = [
   "Renewable energy advances",
 ];
 
-export const SearchAutocomplete = ({ query, onChange, onSearch, onKeyDown, history, disabled }: Props) => {
+export const SearchAutocomplete = ({ query, onChange, onSearch, onKeyDown, history, disabled, inputRef: externalRef }: Props) => {
   const [isOpen, setIsOpen] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const internalRef = useRef<HTMLInputElement>(null);
+  const inputRef = externalRef || internalRef;
 
   const getSuggestions = useCallback(() => {
     const q = query.trim().toLowerCase();
