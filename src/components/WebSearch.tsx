@@ -195,6 +195,7 @@ export const WebSearch = () => {
                 onKeyDown={handleKeyDown}
                 history={history}
                 disabled={isSearching}
+                inputRef={searchInputRef}
               />
               <VoiceSearchButton
                 onTranscript={(text) => { setQuery(text); performSearch(text); }}
