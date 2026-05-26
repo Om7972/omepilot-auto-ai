@@ -86,6 +86,19 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
         ? (saved.reduce((sum, s) => sum + s.result.sources.length, 0) / saved.length).toFixed(1)
         : "0";
 
+    // Word cloud (token frequencies)
+    const wordCounts: Record<string, number> = {};
+    unique.forEach((s) => {
+      s.query.toLowerCase().split(/[^a-z0-9'-]+/).forEach((w) => {
+        if (w.length < 3 || STOP_WORDS.has(w)) return;
+        wordCounts[w] = (wordCounts[w] || 0) + 1;
+      });
+    });
+    const wordCloud = Object.entries(wordCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 30)
+      .map(([word, count]) => ({ word, count }));
+
     return {
       totalSearches: unique.length,
       savedCount: saved.length,
@@ -94,6 +107,7 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
       hourlyData,
       avgSearchTime,
       avgSources,
+      wordCloud,
     };
   }, [history, saved]);
 
