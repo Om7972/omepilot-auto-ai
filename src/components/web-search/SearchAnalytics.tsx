@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
   history: SearchHistoryItem[];
   saved: SavedSearch[];
+  onClear?: () => void;
 }
 
 const COLORS = [
@@ -19,7 +22,9 @@ const COLORS = [
   "hsl(45, 80%, 50%)",
 ];
 
-export const SearchAnalytics = ({ history, saved }: Props) => {
+const STOP_WORDS = new Set(["the","a","an","and","or","of","to","in","for","on","with","is","are","what","how","why","when","where","who","which","by","at","from","as","be","do","does","this","that","i","my","your","it","its","about","vs","best","top"]);
+
+export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
   const stats = useMemo(() => {
     const allSearches = [
       ...history.map((h) => ({ query: h.query, timestamp: h.timestamp })),
@@ -81,6 +86,19 @@ export const SearchAnalytics = ({ history, saved }: Props) => {
         ? (saved.reduce((sum, s) => sum + s.result.sources.length, 0) / saved.length).toFixed(1)
         : "0";
 
+    // Word cloud (token frequencies)
+    const wordCounts: Record<string, number> = {};
+    unique.forEach((s) => {
+      s.query.toLowerCase().split(/[^a-z0-9'-]+/).forEach((w) => {
+        if (w.length < 3 || STOP_WORDS.has(w)) return;
+        wordCounts[w] = (wordCounts[w] || 0) + 1;
+      });
+    });
+    const wordCloud = Object.entries(wordCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 30)
+      .map(([word, count]) => ({ word, count }));
+
     return {
       totalSearches: unique.length,
       savedCount: saved.length,
@@ -89,6 +107,7 @@ export const SearchAnalytics = ({ history, saved }: Props) => {
       hourlyData,
       avgSearchTime,
       avgSources,
+      wordCloud,
     };
   }, [history, saved]);
 
@@ -103,8 +122,35 @@ export const SearchAnalytics = ({ history, saved }: Props) => {
     );
   }
 
+  const ClearButton = onClear ? (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" /> Reset analytics
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset all search statistics?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete your search history and saved searches. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Reset
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ) : null;
+
   return (
     <div className="space-y-4">
+      {onClear && (
+        <div className="flex justify-end">{ClearButton}</div>
+      )}
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -242,6 +288,44 @@ export const SearchAnalytics = ({ history, saved }: Props) => {
                       </div>
                     </div>
                   </motion.div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Word Cloud */}
+      {stats.wordCloud.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+              <Cloud className="h-4 w-4" /> Query Word Cloud
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-x-3 gap-y-2 items-center justify-center py-3">
+              {stats.wordCloud.map((item, i) => {
+                const max = stats.wordCloud[0].count;
+                const min = stats.wordCloud[stats.wordCloud.length - 1].count;
+                const range = Math.max(1, max - min);
+                const t = (item.count - min) / range;
+                const fontSize = 0.8 + t * 1.8;
+                const opacity = 0.5 + t * 0.5;
+                const weight = t > 0.66 ? 700 : t > 0.33 ? 600 : 500;
+                const colorClass = t > 0.66 ? "text-primary" : t > 0.33 ? "text-foreground" : "text-muted-foreground";
+                return (
+                  <motion.span
+                    key={item.word}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity, scale: 1 }}
+                    transition={{ delay: i * 0.02, type: "spring", stiffness: 200 }}
+                    style={{ fontSize: `${fontSize}rem`, fontWeight: weight, lineHeight: 1.1 }}
+                    className={`${colorClass} inline-block hover:text-primary transition-colors cursor-default`}
+                    title={`${item.word} — ${item.count}×`}
+                  >
+                    {item.word}
+                  </motion.span>
                 );
               })}
             </div>

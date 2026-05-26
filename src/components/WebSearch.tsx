@@ -43,7 +43,7 @@ export const WebSearch = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
-  const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
+  const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved, clearAll } = useSearchStorage();
   const { theme, setTheme } = useTheme();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -234,7 +234,7 @@ export const WebSearch = () => {
       {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
 
       {/* Analytics */}
-      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} />}
+      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} onClear={() => { clearAll(); toast.success("Analytics reset"); }} />}
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
         <Card className="bg-card border-border shadow-sm">

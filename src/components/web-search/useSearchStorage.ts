@@ -54,5 +54,17 @@ export function useSearchStorage() {
 
   const isSearchSaved = (query: string) => saved.some(s => s.query === query);
 
-  return { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved };
+  const clearSaved = () => {
+    localStorage.removeItem(SAVED_KEY);
+    setSaved([]);
+  };
+
+  const clearAll = () => {
+    localStorage.removeItem(HISTORY_KEY);
+    localStorage.removeItem(SAVED_KEY);
+    setHistory([]);
+    setSaved([]);
+  };
+
+  return { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved, clearSaved, clearAll };
 }
