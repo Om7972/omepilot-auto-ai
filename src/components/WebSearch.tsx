@@ -43,7 +43,7 @@ export const WebSearch = () => {
   const [showCompare, setShowCompare] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [filters, setFilters] = useState<SearchFilterValues>(DEFAULT_FILTERS);
-  const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved } = useSearchStorage();
+  const { history, saved, saveToHistory, clearHistory, saveSearch, removeSaved, isSearchSaved, clearAll } = useSearchStorage();
   const { theme, setTheme } = useTheme();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
