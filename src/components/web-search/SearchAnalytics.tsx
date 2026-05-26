@@ -1,13 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
   history: SearchHistoryItem[];
   saved: SavedSearch[];
+  onClear?: () => void;
 }
 
 const COLORS = [
