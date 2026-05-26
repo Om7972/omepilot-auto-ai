@@ -38,9 +38,34 @@ function downloadCsv(filename: string, rows: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
+const FILTERS_KEY = "web-search-analytics-filters";
+type SortKey = "timestamp" | "query" | "duration";
+type SortDir = "asc" | "desc";
+
 export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
-  const [range, setRange] = useState<RangeKey>("7");
-  const [wordFilter, setWordFilter] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeKey>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
+      return (["7", "30", "90", "all"].includes(v.range) ? v.range : "7") as RangeKey;
+    } catch { return "7"; }
+  });
+  const [wordFilter, setWordFilter] = useState<string | null>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
+      return typeof v.wordFilter === "string" ? v.wordFilter : null;
+    } catch { return null; }
+  });
+  const [sortKey, setSortKey] = useState<SortKey>("timestamp");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter }));
+  }, [range, wordFilter]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
 
   const stats = useMemo(() => {
     const all = [
