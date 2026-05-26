@@ -18,6 +18,20 @@ export function useSearchStorage() {
   const [history, setHistory] = useState<SearchHistoryItem[]>(() => loadJson(HISTORY_KEY, []));
   const [saved, setSaved] = useState<SavedSearch[]>(() => loadJson(SAVED_KEY, []));
 
+  // Sync across tabs via storage events
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === HISTORY_KEY || e.key === null) {
+        setHistory(loadJson<SearchHistoryItem[]>(HISTORY_KEY, []));
+      }
+      if (e.key === SAVED_KEY || e.key === null) {
+        setSaved(loadJson<SavedSearch[]>(SAVED_KEY, []));
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
   const saveToHistory = (query: string) => {
     const updated = [{ query, timestamp: Date.now() }, ...loadJson<SearchHistoryItem[]>(HISTORY_KEY, []).filter(h => h.query !== query)].slice(0, MAX_HISTORY);
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
