@@ -294,6 +294,44 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Word Cloud */}
+      {stats.wordCloud.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+              <Cloud className="h-4 w-4" /> Query Word Cloud
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-x-3 gap-y-2 items-center justify-center py-3">
+              {stats.wordCloud.map((item, i) => {
+                const max = stats.wordCloud[0].count;
+                const min = stats.wordCloud[stats.wordCloud.length - 1].count;
+                const range = Math.max(1, max - min);
+                const t = (item.count - min) / range;
+                const fontSize = 0.8 + t * 1.8;
+                const opacity = 0.5 + t * 0.5;
+                const weight = t > 0.66 ? 700 : t > 0.33 ? 600 : 500;
+                const colorClass = t > 0.66 ? "text-primary" : t > 0.33 ? "text-foreground" : "text-muted-foreground";
+                return (
+                  <motion.span
+                    key={item.word}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity, scale: 1 }}
+                    transition={{ delay: i * 0.02, type: "spring", stiffness: 200 }}
+                    style={{ fontSize: `${fontSize}rem`, fontWeight: weight, lineHeight: 1.1 }}
+                    className={`${colorClass} inline-block hover:text-primary transition-colors cursor-default`}
+                    title={`${item.word} — ${item.count}×`}
+                  >
+                    {item.word}
+                  </motion.span>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };
