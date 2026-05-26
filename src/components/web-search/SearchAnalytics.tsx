@@ -419,7 +419,75 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
         </Card>
       )}
 
-      {/* Word Cloud */}
+      {/* Search Entries Table */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+            <TableIcon className="h-4 w-4" /> Search Entries
+            <span className="text-xs font-normal text-muted-foreground/70 ml-1">
+              — {sortedRows.length} {sortedRows.length === 1 ? "result" : "results"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sortedRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No entries match the current filter.</p>
+          ) : (
+            <>
+              <div className="rounded-md border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">
+                        <button onClick={() => toggleSort("timestamp")} className="flex items-center gap-1 hover:text-foreground">
+                          Timestamp <SortIcon k="timestamp" />
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button onClick={() => toggleSort("query")} className="flex items-center gap-1 hover:text-foreground">
+                          Query <SortIcon k="query" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-[120px] text-right">
+                        <button onClick={() => toggleSort("duration")} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                          Duration <SortIcon k="duration" />
+                        </button>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedRows.map((row, i) => (
+                      <TableRow key={`${row.timestamp}-${i}`}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(row.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-sm">{row.query}</TableCell>
+                        <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
+                          {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {stats.wordCloud.length > 0 && (
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
