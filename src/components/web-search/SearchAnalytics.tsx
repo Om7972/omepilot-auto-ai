@@ -22,7 +22,9 @@ const COLORS = [
   "hsl(45, 80%, 50%)",
 ];
 
-export const SearchAnalytics = ({ history, saved }: Props) => {
+const STOP_WORDS = new Set(["the","a","an","and","or","of","to","in","for","on","with","is","are","what","how","why","when","where","who","which","by","at","from","as","be","do","does","this","that","i","my","your","it","its","about","vs","best","top"]);
+
+export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
   const stats = useMemo(() => {
     const allSearches = [
       ...history.map((h) => ({ query: h.query, timestamp: h.timestamp })),
