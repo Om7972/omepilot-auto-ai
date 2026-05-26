@@ -88,6 +88,17 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
     const wf = wordFilter?.toLowerCase();
     const filtered = wf ? inRange.filter((s) => s.query.toLowerCase().includes(wf)) : inRange;
 
+    // Duration lookup (from saved entries) keyed by query
+    const durationByQuery = new Map<string, number>();
+    saved.forEach((s) => {
+      if (!durationByQuery.has(s.query)) durationByQuery.set(s.query, s.searchTime);
+    });
+    const tableRows = filtered.map((s) => ({
+      query: s.query,
+      timestamp: s.timestamp,
+      duration: durationByQuery.get(s.query) ?? null,
+    }));
+
     // Popular queries
     const queryCounts: Record<string, number> = {};
     filtered.forEach((s) => {
