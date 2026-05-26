@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
@@ -13,33 +15,56 @@ interface Props {
   onClear?: () => void;
 }
 
-const COLORS = [
-  "hsl(var(--primary))",
-  "hsl(var(--accent))",
-  "hsl(210, 80%, 55%)",
-  "hsl(340, 70%, 55%)",
-  "hsl(160, 60%, 45%)",
-  "hsl(45, 80%, 50%)",
-];
-
 const STOP_WORDS = new Set(["the","a","an","and","or","of","to","in","for","on","with","is","are","what","how","why","when","where","who","which","by","at","from","as","be","do","does","this","that","i","my","your","it","its","about","vs","best","top"]);
 
+type RangeKey = "7" | "30" | "90" | "all";
+const RANGE_LABELS: Record<RangeKey, string> = { "7": "7 days", "30": "30 days", "90": "90 days", "all": "All time" };
+
+function csvEscape(v: string | number) {
+  const s = String(v ?? "");
+  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+function downloadCsv(filename: string, rows: (string | number)[][]) {
+  const csv = rows.map((r) => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
+  const [range, setRange] = useState<RangeKey>("7");
+  const [wordFilter, setWordFilter] = useState<string | null>(null);
+
   const stats = useMemo(() => {
-    const allSearches = [
+    const all = [
       ...history.map((h) => ({ query: h.query, timestamp: h.timestamp })),
       ...saved.map((s) => ({ query: s.query, timestamp: s.savedAt })),
     ];
-
-    // Deduplicate by query+timestamp
-    const unique = allSearches.filter(
-      (item, i, arr) =>
-        arr.findIndex((x) => x.query === item.query && x.timestamp === item.timestamp) === i
+    const unique = all.filter(
+      (item, i, arr) => arr.findIndex((x) => x.query === item.query && x.timestamp === item.timestamp) === i
     );
 
-    // Popular queries (frequency count from all data)
+    // Apply date range
+    const now = Date.now();
+    const dayMs = 86400000;
+    const rangeDays = range === "all" ? Infinity : parseInt(range, 10);
+    const cutoff = range === "all" ? 0 : now - rangeDays * dayMs;
+    const inRange = unique.filter((s) => s.timestamp >= cutoff);
+    const savedInRange = saved.filter((s) => s.savedAt >= cutoff);
+
+    // Apply word filter
+    const wf = wordFilter?.toLowerCase();
+    const filtered = wf ? inRange.filter((s) => s.query.toLowerCase().includes(wf)) : inRange;
+
+    // Popular queries
     const queryCounts: Record<string, number> = {};
-    unique.forEach((s) => {
+    filtered.forEach((s) => {
       const q = s.query.toLowerCase().trim();
       queryCounts[q] = (queryCounts[q] || 0) + 1;
     });
@@ -48,47 +73,37 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
       .slice(0, 8)
       .map(([query, count]) => ({ query, count }));
 
-    // Daily trend (last 7 days)
-    const now = Date.now();
-    const dayMs = 86400000;
-    const dailyTrend = Array.from({ length: 7 }, (_, i) => {
-      const dayStart = now - (6 - i) * dayMs;
+    // Daily trend buckets
+    const buckets = range === "all" ? 14 : Math.min(rangeDays, 30);
+    const dailyTrend = Array.from({ length: buckets }, (_, i) => {
+      const dayStart = now - (buckets - 1 - i) * dayMs;
       const dayEnd = dayStart + dayMs;
-      const count = unique.filter((s) => s.timestamp >= dayStart && s.timestamp < dayEnd).length;
+      const count = filtered.filter((s) => s.timestamp >= dayStart && s.timestamp < dayEnd).length;
       const date = new Date(dayStart);
       return {
-        day: date.toLocaleDateString("en", { weekday: "short" }),
-        date: date.toLocaleDateString("en", { month: "short", day: "numeric" }),
+        day: date.toLocaleDateString("en", { month: "short", day: "numeric" }),
         searches: count,
       };
     });
 
-    // Hourly distribution
+    // Hourly
     const hourCounts = new Array(24).fill(0);
-    unique.forEach((s) => {
-      const hour = new Date(s.timestamp).getHours();
-      hourCounts[hour]++;
-    });
+    filtered.forEach((s) => hourCounts[new Date(s.timestamp).getHours()]++);
     const hourlyData = hourCounts.map((count, hour) => ({
       hour: `${hour.toString().padStart(2, "0")}:00`,
       searches: count,
     }));
 
-    // Avg search time from saved
-    const avgSearchTime =
-      saved.length > 0
-        ? Math.round(saved.reduce((sum, s) => sum + s.searchTime, 0) / saved.length)
-        : 0;
+    const avgSearchTime = savedInRange.length > 0
+      ? Math.round(savedInRange.reduce((sum, s) => sum + s.searchTime, 0) / savedInRange.length)
+      : 0;
+    const avgSources = savedInRange.length > 0
+      ? (savedInRange.reduce((sum, s) => sum + s.result.sources.length, 0) / savedInRange.length).toFixed(1)
+      : "0";
 
-    // Avg sources per search
-    const avgSources =
-      saved.length > 0
-        ? (saved.reduce((sum, s) => sum + s.result.sources.length, 0) / saved.length).toFixed(1)
-        : "0";
-
-    // Word cloud (token frequencies)
+    // Word cloud (uses inRange, ignores wordFilter so user can switch terms)
     const wordCounts: Record<string, number> = {};
-    unique.forEach((s) => {
+    inRange.forEach((s) => {
       s.query.toLowerCase().split(/[^a-z0-9'-]+/).forEach((w) => {
         if (w.length < 3 || STOP_WORDS.has(w)) return;
         wordCounts[w] = (wordCounts[w] || 0) + 1;
@@ -100,18 +115,40 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
       .map(([word, count]) => ({ word, count }));
 
     return {
-      totalSearches: unique.length,
-      savedCount: saved.length,
+      totalSearches: filtered.length,
+      savedCount: savedInRange.length,
       popularQueries,
       dailyTrend,
       hourlyData,
       avgSearchTime,
       avgSources,
       wordCloud,
+      filtered,
     };
-  }, [history, saved]);
+  }, [history, saved, range, wordFilter]);
 
-  if (stats.totalSearches === 0) {
+  const handleExport = () => {
+    const stamp = new Date().toISOString().slice(0, 10);
+    const rows: (string | number)[][] = [];
+    rows.push(["Search Analytics Export"]);
+    rows.push(["Generated", new Date().toISOString()]);
+    rows.push(["Range", RANGE_LABELS[range]]);
+    if (wordFilter) rows.push(["Word filter", wordFilter]);
+    rows.push([]);
+    rows.push(["Section: Search History"]);
+    rows.push(["Query", "Timestamp (ISO)"]);
+    stats.filtered
+      .slice()
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .forEach((s) => rows.push([s.query, new Date(s.timestamp).toISOString()]));
+    rows.push([]);
+    rows.push(["Section: Popular Queries"]);
+    rows.push(["Rank", "Query", "Count"]);
+    stats.popularQueries.forEach((q, i) => rows.push([i + 1, q.query, q.count]));
+    downloadCsv(`search-analytics-${stamp}.csv`, rows);
+  };
+
+  if (history.length === 0 && saved.length === 0) {
     return (
       <Card className="bg-card border-border">
         <CardContent className="py-12 text-center">
@@ -122,35 +159,65 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
     );
   }
 
-  const ClearButton = onClear ? (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
-          <Trash2 className="h-3.5 w-3.5" /> Reset analytics
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Reset all search statistics?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete your search history and saved searches. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-            Reset
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  ) : null;
-
   return (
     <div className="space-y-4">
-      {onClear && (
-        <div className="flex justify-end">{ClearButton}</div>
+      {/* Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ToggleGroup
+          type="single"
+          value={range}
+          onValueChange={(v) => v && setRange(v as RangeKey)}
+          variant="outline"
+          size="sm"
+        >
+          {(Object.keys(RANGE_LABELS) as RangeKey[]).map((k) => (
+            <ToggleGroupItem key={k} value={k} className="text-xs px-3">
+              {RANGE_LABELS[k]}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
+            <Download className="h-3.5 w-3.5" /> Export CSV
+          </Button>
+          {onClear && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
+                  <Trash2 className="h-3.5 w-3.5" /> Reset
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Reset all search statistics?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete your search history and saved searches. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={onClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Reset
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
+      </div>
+
+      {wordFilter && (
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">Filtering by term:</span>
+          <Badge variant="secondary" className="gap-1.5">
+            {wordFilter}
+            <button onClick={() => setWordFilter(null)} className="hover:text-foreground" aria-label="Clear filter">
+              <X className="h-3 w-3" />
+            </button>
+          </Badge>
+        </div>
       )}
+
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
@@ -180,18 +247,17 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
 
       {/* Charts row */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* Daily trend */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
-              <TrendingUp className="h-4 w-4" /> Search Activity (7 Days)
+              <TrendingUp className="h-4 w-4" /> Search Activity ({RANGE_LABELS[range]})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={stats.dailyTrend}>
-                  <XAxis dataKey="day" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" interval="preserveStartEnd" />
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
                   <Tooltip
                     contentStyle={{
@@ -201,14 +267,13 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                       fontSize: 12,
                       color: "hsl(var(--foreground))",
                     }}
-                    labelFormatter={(_, payload) => payload?.[0]?.payload?.date || ""}
                   />
                   <Line
                     type="monotone"
                     dataKey="searches"
                     stroke="hsl(var(--primary))"
                     strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", r: 4 }}
+                    dot={{ fill: "hsl(var(--primary))", r: 3 }}
                     activeDot={{ r: 6 }}
                   />
                 </LineChart>
@@ -217,7 +282,6 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
           </CardContent>
         </Card>
 
-        {/* Peak hours */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
@@ -268,15 +332,11 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                     transition={{ delay: i * 0.04 }}
                     className="flex items-center gap-3 py-1.5"
                   >
-                    <span className="text-xs font-mono text-muted-foreground/60 w-5 text-right">
-                      {i + 1}
-                    </span>
+                    <span className="text-xs font-mono text-muted-foreground/60 w-5 text-right">{i + 1}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-0.5">
                         <span className="text-sm text-foreground truncate">{item.query}</span>
-                        <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">
-                          {item.count}×
-                        </span>
+                        <span className="text-xs text-muted-foreground ml-2 flex-shrink-0">{item.count}×</span>
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <motion.div
@@ -291,6 +351,9 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                 );
               })}
             </div>
+            {stats.popularQueries.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">No queries match the current filter.</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -301,6 +364,7 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
               <Cloud className="h-4 w-4" /> Query Word Cloud
+              <span className="text-xs font-normal text-muted-foreground/70 ml-1">— click a term to filter</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -313,19 +377,23 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                 const fontSize = 0.8 + t * 1.8;
                 const opacity = 0.5 + t * 0.5;
                 const weight = t > 0.66 ? 700 : t > 0.33 ? 600 : 500;
-                const colorClass = t > 0.66 ? "text-primary" : t > 0.33 ? "text-foreground" : "text-muted-foreground";
+                const isActive = wordFilter === item.word;
+                const colorClass = isActive
+                  ? "text-primary"
+                  : t > 0.66 ? "text-primary/80" : t > 0.33 ? "text-foreground" : "text-muted-foreground";
                 return (
-                  <motion.span
+                  <motion.button
                     key={item.word}
                     initial={{ opacity: 0, scale: 0.6 }}
                     animate={{ opacity, scale: 1 }}
                     transition={{ delay: i * 0.02, type: "spring", stiffness: 200 }}
                     style={{ fontSize: `${fontSize}rem`, fontWeight: weight, lineHeight: 1.1 }}
-                    className={`${colorClass} inline-block hover:text-primary transition-colors cursor-default`}
-                    title={`${item.word} — ${item.count}×`}
+                    className={`${colorClass} inline-block hover:text-primary transition-colors cursor-pointer ${isActive ? "underline underline-offset-4" : ""}`}
+                    title={`${item.word} — ${item.count}× (click to filter)`}
+                    onClick={() => setWordFilter(isActive ? null : item.word)}
                   >
                     {item.word}
-                  </motion.span>
+                  </motion.button>
                 );
               })}
             </div>
