@@ -161,8 +161,32 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
       avgSources,
       wordCloud,
       filtered,
+      tableRows,
     };
   }, [history, saved, range, wordFilter]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...stats.tableRows];
+    const mul = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortKey === "query") return a.query.localeCompare(b.query) * mul;
+      if (sortKey === "duration") return ((a.duration ?? -1) - (b.duration ?? -1)) * mul;
+      return (a.timestamp - b.timestamp) * mul;
+    });
+    return rows;
+  }, [stats.tableRows, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "query" ? "asc" : "desc"); }
+  };
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k ? <span className="inline-block w-3" /> : sortDir === "asc"
+      ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />;
 
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10);
