@@ -122,8 +122,35 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
     );
   }
 
+  const ClearButton = onClear ? (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5 text-destructive hover:text-destructive">
+          <Trash2 className="h-3.5 w-3.5" /> Reset analytics
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Reset all search statistics?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will permanently delete your search history and saved searches. This action cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={onClear} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            Reset
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  ) : null;
+
   return (
     <div className="space-y-4">
+      {onClear && (
+        <div className="flex justify-end">{ClearButton}</div>
+      )}
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
