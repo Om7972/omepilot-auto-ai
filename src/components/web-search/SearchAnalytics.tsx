@@ -1,12 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 interface Props {
@@ -37,9 +38,34 @@ function downloadCsv(filename: string, rows: (string | number)[][]) {
   URL.revokeObjectURL(url);
 }
 
+const FILTERS_KEY = "web-search-analytics-filters";
+type SortKey = "timestamp" | "query" | "duration";
+type SortDir = "asc" | "desc";
+
 export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
-  const [range, setRange] = useState<RangeKey>("7");
-  const [wordFilter, setWordFilter] = useState<string | null>(null);
+  const [range, setRange] = useState<RangeKey>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
+      return (["7", "30", "90", "all"].includes(v.range) ? v.range : "7") as RangeKey;
+    } catch { return "7"; }
+  });
+  const [wordFilter, setWordFilter] = useState<string | null>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
+      return typeof v.wordFilter === "string" ? v.wordFilter : null;
+    } catch { return null; }
+  });
+  const [sortKey, setSortKey] = useState<SortKey>("timestamp");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+
+  useEffect(() => {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter }));
+  }, [range, wordFilter]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
 
   const stats = useMemo(() => {
     const all = [
@@ -61,6 +87,17 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
     // Apply word filter
     const wf = wordFilter?.toLowerCase();
     const filtered = wf ? inRange.filter((s) => s.query.toLowerCase().includes(wf)) : inRange;
+
+    // Duration lookup (from saved entries) keyed by query
+    const durationByQuery = new Map<string, number>();
+    saved.forEach((s) => {
+      if (!durationByQuery.has(s.query)) durationByQuery.set(s.query, s.searchTime);
+    });
+    const tableRows = filtered.map((s) => ({
+      query: s.query,
+      timestamp: s.timestamp,
+      duration: durationByQuery.get(s.query) ?? null,
+    }));
 
     // Popular queries
     const queryCounts: Record<string, number> = {};
@@ -124,8 +161,32 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
       avgSources,
       wordCloud,
       filtered,
+      tableRows,
     };
   }, [history, saved, range, wordFilter]);
+
+  const sortedRows = useMemo(() => {
+    const rows = [...stats.tableRows];
+    const mul = sortDir === "asc" ? 1 : -1;
+    rows.sort((a, b) => {
+      if (sortKey === "query") return a.query.localeCompare(b.query) * mul;
+      if (sortKey === "duration") return ((a.duration ?? -1) - (b.duration ?? -1)) * mul;
+      return (a.timestamp - b.timestamp) * mul;
+    });
+    return rows;
+  }, [stats.tableRows, sortKey, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pagedRows = sortedRows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(key); setSortDir(key === "query" ? "asc" : "desc"); }
+  };
+  const SortIcon = ({ k }: { k: SortKey }) =>
+    sortKey !== k ? <span className="inline-block w-3" /> : sortDir === "asc"
+      ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />;
 
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10);
@@ -358,7 +419,75 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
         </Card>
       )}
 
-      {/* Word Cloud */}
+      {/* Search Entries Table */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2 text-muted-foreground">
+            <TableIcon className="h-4 w-4" /> Search Entries
+            <span className="text-xs font-normal text-muted-foreground/70 ml-1">
+              — {sortedRows.length} {sortedRows.length === 1 ? "result" : "results"}
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {sortedRows.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">No entries match the current filter.</p>
+          ) : (
+            <>
+              <div className="rounded-md border border-border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[200px]">
+                        <button onClick={() => toggleSort("timestamp")} className="flex items-center gap-1 hover:text-foreground">
+                          Timestamp <SortIcon k="timestamp" />
+                        </button>
+                      </TableHead>
+                      <TableHead>
+                        <button onClick={() => toggleSort("query")} className="flex items-center gap-1 hover:text-foreground">
+                          Query <SortIcon k="query" />
+                        </button>
+                      </TableHead>
+                      <TableHead className="w-[120px] text-right">
+                        <button onClick={() => toggleSort("duration")} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                          Duration <SortIcon k="duration" />
+                        </button>
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedRows.map((row, i) => (
+                      <TableRow key={`${row.timestamp}-${i}`}>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                          {new Date(row.timestamp).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-sm">{row.query}</TableCell>
+                        <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
+                          {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
+                <span>
+                  Page {currentPage} of {totalPages}
+                </span>
+                <div className="flex items-center gap-1">
+                  <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
       {stats.wordCloud.length > 0 && (
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
