@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon, Copy, ExternalLink } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -14,6 +15,7 @@ interface Props {
   history: SearchHistoryItem[];
   saved: SavedSearch[];
   onClear?: () => void;
+  onOpenSaved?: (saved: SavedSearch) => void;
 }
 
 const STOP_WORDS = new Set(["the","a","an","and","or","of","to","in","for","on","with","is","are","what","how","why","when","where","who","which","by","at","from","as","be","do","does","this","that","i","my","your","it","its","about","vs","best","top"]);
