@@ -90,16 +90,20 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     const wf = wordFilter?.toLowerCase();
     const filtered = wf ? inRange.filter((s) => s.query.toLowerCase().includes(wf)) : inRange;
 
-    // Duration lookup (from saved entries) keyed by query
-    const durationByQuery = new Map<string, number>();
-    saved.forEach((s) => {
-      if (!durationByQuery.has(s.query)) durationByQuery.set(s.query, s.searchTime);
+    // Duration lookup keyed by query+timestamp so entries with the same query
+    // but different timestamps map to their own saved duration.
+    const savedByKey = new Map<string, SavedSearch>();
+    saved.forEach((s) => savedByKey.set(`${s.query}|${s.savedAt}`, s));
+    const tableRows = filtered.map((s) => {
+      const ref = savedByKey.get(`${s.query}|${s.timestamp}`);
+      return {
+        query: s.query,
+        timestamp: s.timestamp,
+        duration: ref ? ref.searchTime : null,
+        savedRef: ref ?? null,
+      };
     });
-    const tableRows = filtered.map((s) => ({
-      query: s.query,
-      timestamp: s.timestamp,
-      duration: durationByQuery.get(s.query) ?? null,
-    }));
+
 
     // Popular queries
     const queryCounts: Record<string, number> = {};
