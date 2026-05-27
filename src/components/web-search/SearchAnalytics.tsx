@@ -465,6 +465,7 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                           Duration <SortIcon k="duration" />
                         </button>
                       </TableHead>
+                      <TableHead className="w-[90px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -477,8 +478,34 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                         <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
                           {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => handleCopyQuery(row.query)}
+                              title="Copy query"
+                              aria-label="Copy query"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={!row.savedRef || !onOpenSaved}
+                              onClick={() => row.savedRef && onOpenSaved?.(row.savedRef)}
+                              title={row.savedRef ? "Open search details" : "No saved details for this entry"}
+                              aria-label="Open search details"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>
