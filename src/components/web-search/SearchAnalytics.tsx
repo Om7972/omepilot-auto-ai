@@ -197,23 +197,29 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10);
     const rows: (string | number)[][] = [];
-    rows.push(["Search Analytics Export"]);
+    rows.push(["Search Entries Export"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
+    rows.push(["Sort", `${sortKey} ${sortDir}`]);
+    rows.push(["Page", `${currentPage} of ${totalPages} (size ${pageSize})`]);
     rows.push([]);
-    rows.push(["Section: Search History"]);
-    rows.push(["Query", "Timestamp (ISO)"]);
-    stats.filtered
-      .slice()
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .forEach((s) => rows.push([s.query, new Date(s.timestamp).toISOString()]));
-    rows.push([]);
-    rows.push(["Section: Popular Queries"]);
-    rows.push(["Rank", "Query", "Count"]);
-    stats.popularQueries.forEach((q, i) => rows.push([i + 1, q.query, q.count]));
-    downloadCsv(`search-analytics-${stamp}.csv`, rows);
+    rows.push(["Timestamp (ISO)", "Query", "Duration (ms)"]);
+    pagedRows.forEach((r) =>
+      rows.push([new Date(r.timestamp).toISOString(), r.query, r.duration ?? ""])
+    );
+    downloadCsv(`search-entries-${stamp}-p${currentPage}.csv`, rows);
   };
+
+  const handleCopyQuery = async (q: string) => {
+    try {
+      await navigator.clipboard.writeText(q);
+      toast.success("Query copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
 
   if (history.length === 0 && saved.length === 0) {
     return (
