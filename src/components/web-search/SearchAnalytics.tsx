@@ -559,50 +559,87 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedRows.map((row, i) => (
-                      <TableRow key={`${row.timestamp}-${i}`}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(row.timestamp).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-sm">{row.query}</TableCell>
-                        <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
-                          {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => handleCopyQuery(row.query)}
-                              title="Copy query"
-                              aria-label="Copy query"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              disabled={!row.savedRef || !onOpenSaved}
-                              onClick={() => row.savedRef && onOpenSaved?.(row.savedRef)}
-                              title={row.savedRef ? "Open search details" : "No saved details for this entry"}
-                              aria-label="Open search details"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {pagedRows.map((row, i) => {
+                      const rowKey = `${row.timestamp}-${i}`;
+                      return (
+                        <TableRow
+                          key={rowKey}
+                          ref={(el) => { rowRefs.current[rowKey] = el; }}
+                          tabIndex={0}
+                          onKeyDown={(e) => handleRowKeyDown(e, row)}
+                          className="focus:outline-none focus-visible:bg-accent/50 focus-visible:ring-1 focus-visible:ring-ring"
+                          aria-label={`Search entry: ${row.query}. Press C to copy.`}
+                        >
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(row.timestamp).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-sm">{row.query}</TableCell>
+                          <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
+                            {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <TooltipProvider delayDuration={300}>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => handleCopyQuery(row.query)}
+                                      aria-label="Copy query"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    Copy query <kbd className="ml-1 text-[10px] px-1 py-0.5 rounded border border-border bg-muted">C</kbd>
+                                  </TooltipContent>
+                                </UITooltip>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => {
+                                        if (row.savedRef && onOpenSaved) onOpenSaved(row.savedRef);
+                                        else setMissingDetailsRow({ query: row.query, timestamp: row.timestamp });
+                                      }}
+                                      aria-label={row.savedRef ? "Open search details" : "No saved details (show info)"}
+                                    >
+                                      {row.savedRef ? <ExternalLink className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5 text-muted-foreground" />}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    {row.savedRef ? "Open saved details" : "No saved result — see options"}
+                                  </TooltipContent>
+                                </UITooltip>
+                              </TooltipProvider>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
 
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
+              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span>Rows per page:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span>Page {currentPage} of {totalPages}</span>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                     <ChevronLeft className="h-3.5 w-3.5" />
@@ -612,6 +649,39 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                   </Button>
                 </div>
               </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={!!missingDetailsRow} onOpenChange={(o) => !o && setMissingDetailsRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No saved details for this entry</DialogTitle>
+            <DialogDescription>
+              This search exists in your history but wasn't saved, so the full answer and sources are not available.
+            </DialogDescription>
+          </DialogHeader>
+          {missingDetailsRow && (
+            <div className="rounded-md border border-border bg-muted/40 p-3 space-y-1">
+              <p className="text-sm font-medium text-foreground break-words">{missingDetailsRow.query}</p>
+              <p className="text-xs text-muted-foreground">{new Date(missingDetailsRow.timestamp).toLocaleString()}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (missingDetailsRow) handleCopyQuery(missingDetailsRow.query);
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy query
+            </Button>
+            <Button onClick={() => setMissingDetailsRow(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
             </>
           )}
         </CardContent>
