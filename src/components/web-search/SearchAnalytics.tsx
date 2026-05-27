@@ -206,31 +206,78 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     sortKey !== k ? <span className="inline-block w-3" /> : sortDir === "asc"
       ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />;
 
-  const handleExport = () => {
-    const stamp = new Date().toISOString().slice(0, 10);
+  const buildCsvRows = (rowsSource: typeof pagedRows, scope: "page" | "all") => {
     const rows: (string | number)[][] = [];
     rows.push(["Search Entries Export"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
     rows.push(["Sort", `${sortKey} ${sortDir}`]);
-    rows.push(["Page", `${currentPage} of ${totalPages} (size ${pageSize})`]);
+    rows.push(["Scope", scope === "page" ? `Page ${currentPage} of ${totalPages} (size ${pageSize})` : `All filtered rows (${sortedRows.length})`]);
     rows.push([]);
     rows.push(["Timestamp (ISO)", "Query", "Duration (ms)"]);
-    pagedRows.forEach((r) =>
+    rowsSource.forEach((r) =>
       rows.push([new Date(r.timestamp).toISOString(), r.query, r.duration ?? ""])
     );
-    downloadCsv(`search-entries-${stamp}-p${currentPage}.csv`, rows);
+    return rows;
+  };
+
+  const runExport = async (scope: "page" | "all") => {
+    if (isExporting) return;
+    const source = scope === "page" ? pagedRows : sortedRows;
+    setIsExporting(true);
+    setExportProgress(0);
+    setExportLabel(scope === "page" ? "Preparing page CSV…" : `Preparing ${source.length} rows…`);
+    try {
+      // Chunked progress (yields to UI thread so the progress bar animates)
+      const chunkSize = Math.max(50, Math.ceil(source.length / 20));
+      const accumulated: typeof source = [];
+      for (let i = 0; i < source.length; i += chunkSize) {
+        accumulated.push(...source.slice(i, i + chunkSize));
+        const pct = source.length === 0 ? 100 : Math.min(99, Math.round(((i + chunkSize) / source.length) * 100));
+        setExportProgress(pct);
+        // Yield to allow the progress bar to repaint
+        await new Promise((r) => setTimeout(r, 16));
+      }
+      setExportLabel("Writing file…");
+      const stamp = new Date().toISOString().slice(0, 10);
+      const filename = scope === "page"
+        ? `search-entries-${stamp}-p${currentPage}.csv`
+        : `search-entries-${stamp}-all.csv`;
+      downloadCsv(filename, buildCsvRows(accumulated, scope));
+      setExportProgress(100);
+      toast.success(scope === "page" ? "Page CSV downloaded" : `Exported ${source.length} rows`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+        setExportProgress(0);
+        setExportLabel("");
+      }, 400);
+    }
   };
 
   const handleCopyQuery = async (q: string) => {
     try {
       await navigator.clipboard.writeText(q);
-      toast.success("Query copied");
+      toast.success("Query copied", { description: q.length > 80 ? q.slice(0, 80) + "…" : q });
     } catch {
       toast.error("Failed to copy");
     }
   };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>, row: typeof pagedRows[number]) => {
+    if ((e.key === "c" || e.key === "C") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const target = e.target as HTMLElement;
+      // Only fire when the row itself (not an inner button) is focused
+      if (target.tagName === "TR") {
+        e.preventDefault();
+        handleCopyQuery(row.query);
+      }
+    }
+  };
+
 
 
   if (history.length === 0 && saved.length === 0) {
