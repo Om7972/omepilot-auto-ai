@@ -682,10 +682,6 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
         </DialogContent>
       </Dialog>
 
-            </>
-          )}
-        </CardContent>
-      </Card>
 
       {stats.wordCloud.length > 0 && (
         <Card className="bg-card border-border">
