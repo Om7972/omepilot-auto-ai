@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon, Copy, ExternalLink } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -14,6 +15,7 @@ interface Props {
   history: SearchHistoryItem[];
   saved: SavedSearch[];
   onClear?: () => void;
+  onOpenSaved?: (saved: SavedSearch) => void;
 }
 
 const STOP_WORDS = new Set(["the","a","an","and","or","of","to","in","for","on","with","is","are","what","how","why","when","where","who","which","by","at","from","as","be","do","does","this","that","i","my","your","it","its","about","vs","best","top"]);
@@ -42,30 +44,30 @@ const FILTERS_KEY = "web-search-analytics-filters";
 type SortKey = "timestamp" | "query" | "duration";
 type SortDir = "asc" | "desc";
 
-export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
-  const [range, setRange] = useState<RangeKey>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
-      return (["7", "30", "90", "all"].includes(v.range) ? v.range : "7") as RangeKey;
-    } catch { return "7"; }
-  });
-  const [wordFilter, setWordFilter] = useState<string | null>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
-      return typeof v.wordFilter === "string" ? v.wordFilter : null;
-    } catch { return null; }
-  });
-  const [sortKey, setSortKey] = useState<SortKey>("timestamp");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
+export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props) => {
+  const persisted = (() => {
+    try { return JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}"); } catch { return {}; }
+  })();
+  const [range, setRange] = useState<RangeKey>(
+    ["7", "30", "90", "all"].includes(persisted.range) ? persisted.range : "7"
+  );
+  const [wordFilter, setWordFilter] = useState<string | null>(
+    typeof persisted.wordFilter === "string" ? persisted.wordFilter : null
+  );
+  const [sortKey, setSortKey] = useState<SortKey>(
+    ["timestamp", "query", "duration"].includes(persisted.sortKey) ? persisted.sortKey : "timestamp"
+  );
+  const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir === "asc" ? "asc" : "desc");
+  const [page, setPage] = useState<number>(typeof persisted.page === "number" && persisted.page > 0 ? persisted.page : 1);
   const pageSize = 10;
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter }));
-  }, [range, wordFilter]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page }));
+  }, [range, wordFilter, sortKey, sortDir, page]);
 
-  // Reset page when filters change
+  // Reset page when filters/sort change (but not on direct page set)
   useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
+
 
   const stats = useMemo(() => {
     const all = [
@@ -88,16 +90,20 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
     const wf = wordFilter?.toLowerCase();
     const filtered = wf ? inRange.filter((s) => s.query.toLowerCase().includes(wf)) : inRange;
 
-    // Duration lookup (from saved entries) keyed by query
-    const durationByQuery = new Map<string, number>();
-    saved.forEach((s) => {
-      if (!durationByQuery.has(s.query)) durationByQuery.set(s.query, s.searchTime);
+    // Duration lookup keyed by query+timestamp so entries with the same query
+    // but different timestamps map to their own saved duration.
+    const savedByKey = new Map<string, SavedSearch>();
+    saved.forEach((s) => savedByKey.set(`${s.query}|${s.savedAt}`, s));
+    const tableRows = filtered.map((s) => {
+      const ref = savedByKey.get(`${s.query}|${s.timestamp}`);
+      return {
+        query: s.query,
+        timestamp: s.timestamp,
+        duration: ref ? ref.searchTime : null,
+        savedRef: ref ?? null,
+      };
     });
-    const tableRows = filtered.map((s) => ({
-      query: s.query,
-      timestamp: s.timestamp,
-      duration: durationByQuery.get(s.query) ?? null,
-    }));
+
 
     // Popular queries
     const queryCounts: Record<string, number> = {};
@@ -191,23 +197,29 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
   const handleExport = () => {
     const stamp = new Date().toISOString().slice(0, 10);
     const rows: (string | number)[][] = [];
-    rows.push(["Search Analytics Export"]);
+    rows.push(["Search Entries Export"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
+    rows.push(["Sort", `${sortKey} ${sortDir}`]);
+    rows.push(["Page", `${currentPage} of ${totalPages} (size ${pageSize})`]);
     rows.push([]);
-    rows.push(["Section: Search History"]);
-    rows.push(["Query", "Timestamp (ISO)"]);
-    stats.filtered
-      .slice()
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .forEach((s) => rows.push([s.query, new Date(s.timestamp).toISOString()]));
-    rows.push([]);
-    rows.push(["Section: Popular Queries"]);
-    rows.push(["Rank", "Query", "Count"]);
-    stats.popularQueries.forEach((q, i) => rows.push([i + 1, q.query, q.count]));
-    downloadCsv(`search-analytics-${stamp}.csv`, rows);
+    rows.push(["Timestamp (ISO)", "Query", "Duration (ms)"]);
+    pagedRows.forEach((r) =>
+      rows.push([new Date(r.timestamp).toISOString(), r.query, r.duration ?? ""])
+    );
+    downloadCsv(`search-entries-${stamp}-p${currentPage}.csv`, rows);
   };
+
+  const handleCopyQuery = async (q: string) => {
+    try {
+      await navigator.clipboard.writeText(q);
+      toast.success("Query copied");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
 
   if (history.length === 0 && saved.length === 0) {
     return (
@@ -453,6 +465,7 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                           Duration <SortIcon k="duration" />
                         </button>
                       </TableHead>
+                      <TableHead className="w-[90px] text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -465,8 +478,34 @@ export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
                         <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
                           {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
                         </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => handleCopyQuery(row.query)}
+                              title="Copy query"
+                              aria-label="Copy query"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              disabled={!row.savedRef || !onOpenSaved}
+                              onClick={() => row.savedRef && onOpenSaved?.(row.savedRef)}
+                              title={row.savedRef ? "Open search details" : "No saved details for this entry"}
+                              aria-label="Open search details"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))}
+
                   </TableBody>
                 </Table>
               </div>
