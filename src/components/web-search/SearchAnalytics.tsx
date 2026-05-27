@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon, Copy, ExternalLink } from "lucide-react";
+import { BarChart3, TrendingUp, Clock, Search, Hash, Zap, Cloud, Trash2, Download, X, ArrowUp, ArrowDown, ChevronLeft, ChevronRight, Table as TableIcon, Copy, ExternalLink, Loader2, FileDown, Info } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from "recharts";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 import { motion } from "framer-motion";
@@ -10,6 +10,10 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Tooltip as UITooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 interface Props {
   history: SearchHistoryItem[];
@@ -59,14 +63,22 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
   );
   const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir === "asc" ? "asc" : "desc");
   const [page, setPage] = useState<number>(typeof persisted.page === "number" && persisted.page > 0 ? persisted.page : 1);
-  const pageSize = 10;
+  const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+  const [pageSize, setPageSize] = useState<number>(
+    PAGE_SIZE_OPTIONS.includes(persisted.pageSize) ? persisted.pageSize : 10
+  );
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportLabel, setExportLabel] = useState("");
+  const [missingDetailsRow, setMissingDetailsRow] = useState<{ query: string; timestamp: number } | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page }));
-  }, [range, wordFilter, sortKey, sortDir, page]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page, pageSize }));
+  }, [range, wordFilter, sortKey, sortDir, page, pageSize]);
 
-  // Reset page when filters/sort change (but not on direct page set)
-  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
+  // Reset page when filters/sort/pageSize change (but not on direct page set)
+  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir, pageSize]);
 
 
   const stats = useMemo(() => {
@@ -194,31 +206,78 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     sortKey !== k ? <span className="inline-block w-3" /> : sortDir === "asc"
       ? <ArrowUp className="h-3 w-3 inline" /> : <ArrowDown className="h-3 w-3 inline" />;
 
-  const handleExport = () => {
-    const stamp = new Date().toISOString().slice(0, 10);
+  const buildCsvRows = (rowsSource: typeof pagedRows, scope: "page" | "all") => {
     const rows: (string | number)[][] = [];
     rows.push(["Search Entries Export"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
     rows.push(["Sort", `${sortKey} ${sortDir}`]);
-    rows.push(["Page", `${currentPage} of ${totalPages} (size ${pageSize})`]);
+    rows.push(["Scope", scope === "page" ? `Page ${currentPage} of ${totalPages} (size ${pageSize})` : `All filtered rows (${sortedRows.length})`]);
     rows.push([]);
     rows.push(["Timestamp (ISO)", "Query", "Duration (ms)"]);
-    pagedRows.forEach((r) =>
+    rowsSource.forEach((r) =>
       rows.push([new Date(r.timestamp).toISOString(), r.query, r.duration ?? ""])
     );
-    downloadCsv(`search-entries-${stamp}-p${currentPage}.csv`, rows);
+    return rows;
+  };
+
+  const runExport = async (scope: "page" | "all") => {
+    if (isExporting) return;
+    const source = scope === "page" ? pagedRows : sortedRows;
+    setIsExporting(true);
+    setExportProgress(0);
+    setExportLabel(scope === "page" ? "Preparing page CSV…" : `Preparing ${source.length} rows…`);
+    try {
+      // Chunked progress (yields to UI thread so the progress bar animates)
+      const chunkSize = Math.max(50, Math.ceil(source.length / 20));
+      const accumulated: typeof source = [];
+      for (let i = 0; i < source.length; i += chunkSize) {
+        accumulated.push(...source.slice(i, i + chunkSize));
+        const pct = source.length === 0 ? 100 : Math.min(99, Math.round(((i + chunkSize) / source.length) * 100));
+        setExportProgress(pct);
+        // Yield to allow the progress bar to repaint
+        await new Promise((r) => setTimeout(r, 16));
+      }
+      setExportLabel("Writing file…");
+      const stamp = new Date().toISOString().slice(0, 10);
+      const filename = scope === "page"
+        ? `search-entries-${stamp}-p${currentPage}.csv`
+        : `search-entries-${stamp}-all.csv`;
+      downloadCsv(filename, buildCsvRows(accumulated, scope));
+      setExportProgress(100);
+      toast.success(scope === "page" ? "Page CSV downloaded" : `Exported ${source.length} rows`);
+    } catch {
+      toast.error("Export failed");
+    } finally {
+      setTimeout(() => {
+        setIsExporting(false);
+        setExportProgress(0);
+        setExportLabel("");
+      }, 400);
+    }
   };
 
   const handleCopyQuery = async (q: string) => {
     try {
       await navigator.clipboard.writeText(q);
-      toast.success("Query copied");
+      toast.success("Query copied", { description: q.length > 80 ? q.slice(0, 80) + "…" : q });
     } catch {
       toast.error("Failed to copy");
     }
   };
+
+  const handleRowKeyDown = (e: React.KeyboardEvent<HTMLTableRowElement>, row: typeof pagedRows[number]) => {
+    if ((e.key === "c" || e.key === "C") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+      const target = e.target as HTMLElement;
+      // Only fire when the row itself (not an inner button) is focused
+      if (target.tagName === "TR") {
+        e.preventDefault();
+        handleCopyQuery(row.query);
+      }
+    }
+  };
+
 
 
   if (history.length === 0 && saved.length === 0) {
@@ -250,8 +309,26 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
           ))}
         </ToggleGroup>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5" /> Export CSV
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 min-w-[130px]"
+            onClick={() => runExport("page")}
+            disabled={isExporting || sortedRows.length === 0}
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {isExporting ? `${exportProgress}%` : "Export page"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => runExport("all")}
+            disabled={isExporting || sortedRows.length === 0}
+            title="Export all filtered rows (ignores current page)"
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+            Export all ({sortedRows.length})
           </Button>
           {onClear && (
             <AlertDialog>
@@ -278,6 +355,19 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
           )}
         </div>
       </div>
+
+      {isExporting && (
+        <div className="space-y-1.5" role="status" aria-live="polite">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> {exportLabel || "Exporting…"}
+            </span>
+            <span className="tabular-nums">{exportProgress}%</span>
+          </div>
+          <Progress value={exportProgress} className="h-1.5" />
+        </div>
+      )}
+
 
       {wordFilter && (
         <div className="flex items-center gap-2">
@@ -469,50 +559,87 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {pagedRows.map((row, i) => (
-                      <TableRow key={`${row.timestamp}-${i}`}>
-                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                          {new Date(row.timestamp).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-sm">{row.query}</TableCell>
-                        <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
-                          {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={() => handleCopyQuery(row.query)}
-                              title="Copy query"
-                              aria-label="Copy query"
-                            >
-                              <Copy className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              disabled={!row.savedRef || !onOpenSaved}
-                              onClick={() => row.savedRef && onOpenSaved?.(row.savedRef)}
-                              title={row.savedRef ? "Open search details" : "No saved details for this entry"}
-                              aria-label="Open search details"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {pagedRows.map((row, i) => {
+                      const rowKey = `${row.timestamp}-${i}`;
+                      return (
+                        <TableRow
+                          key={rowKey}
+                          ref={(el) => { rowRefs.current[rowKey] = el; }}
+                          tabIndex={0}
+                          onKeyDown={(e) => handleRowKeyDown(e, row)}
+                          className="focus:outline-none focus-visible:bg-accent/50 focus-visible:ring-1 focus-visible:ring-ring"
+                          aria-label={`Search entry: ${row.query}. Press C to copy.`}
+                        >
+                          <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                            {new Date(row.timestamp).toLocaleString()}
+                          </TableCell>
+                          <TableCell className="text-sm">{row.query}</TableCell>
+                          <TableCell className="text-xs text-right tabular-nums text-muted-foreground">
+                            {row.duration != null ? `${(row.duration / 1000).toFixed(2)}s` : "—"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-1">
+                              <TooltipProvider delayDuration={300}>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => handleCopyQuery(row.query)}
+                                      aria-label="Copy query"
+                                    >
+                                      <Copy className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    Copy query <kbd className="ml-1 text-[10px] px-1 py-0.5 rounded border border-border bg-muted">C</kbd>
+                                  </TooltipContent>
+                                </UITooltip>
+                                <UITooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7"
+                                      onClick={() => {
+                                        if (row.savedRef && onOpenSaved) onOpenSaved(row.savedRef);
+                                        else setMissingDetailsRow({ query: row.query, timestamp: row.timestamp });
+                                      }}
+                                      aria-label={row.savedRef ? "Open search details" : "No saved details (show info)"}
+                                    >
+                                      {row.savedRef ? <ExternalLink className="h-3.5 w-3.5" /> : <Info className="h-3.5 w-3.5 text-muted-foreground" />}
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent side="top">
+                                    {row.savedRef ? "Open saved details" : "No saved result — see options"}
+                                  </TooltipContent>
+                                </UITooltip>
+                              </TooltipProvider>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
 
                   </TableBody>
                 </Table>
               </div>
-              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground">
-                <span>
-                  Page {currentPage} of {totalPages}
-                </span>
+              <div className="flex items-center justify-between mt-3 text-xs text-muted-foreground gap-3 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span>Rows per page:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAGE_SIZE_OPTIONS.map((n) => (
+                        <SelectItem key={n} value={String(n)} className="text-xs">{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <span>Page {currentPage} of {totalPages}</span>
                 <div className="flex items-center gap-1">
                   <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
                     <ChevronLeft className="h-3.5 w-3.5" />
@@ -526,6 +653,35 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!missingDetailsRow} onOpenChange={(o) => !o && setMissingDetailsRow(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>No saved details for this entry</DialogTitle>
+            <DialogDescription>
+              This search exists in your history but wasn't saved, so the full answer and sources are not available.
+            </DialogDescription>
+          </DialogHeader>
+          {missingDetailsRow && (
+            <div className="rounded-md border border-border bg-muted/40 p-3 space-y-1">
+              <p className="text-sm font-medium text-foreground break-words">{missingDetailsRow.query}</p>
+              <p className="text-xs text-muted-foreground">{new Date(missingDetailsRow.timestamp).toLocaleString()}</p>
+            </div>
+          )}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (missingDetailsRow) handleCopyQuery(missingDetailsRow.query);
+              }}
+            >
+              <Copy className="h-3.5 w-3.5 mr-1.5" /> Copy query
+            </Button>
+            <Button onClick={() => setMissingDetailsRow(null)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       {stats.wordCloud.length > 0 && (
         <Card className="bg-card border-border">
