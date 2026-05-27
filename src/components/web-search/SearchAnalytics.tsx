@@ -44,30 +44,30 @@ const FILTERS_KEY = "web-search-analytics-filters";
 type SortKey = "timestamp" | "query" | "duration";
 type SortDir = "asc" | "desc";
 
-export const SearchAnalytics = ({ history, saved, onClear }: Props) => {
-  const [range, setRange] = useState<RangeKey>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
-      return (["7", "30", "90", "all"].includes(v.range) ? v.range : "7") as RangeKey;
-    } catch { return "7"; }
-  });
-  const [wordFilter, setWordFilter] = useState<string | null>(() => {
-    try {
-      const v = JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}");
-      return typeof v.wordFilter === "string" ? v.wordFilter : null;
-    } catch { return null; }
-  });
-  const [sortKey, setSortKey] = useState<SortKey>("timestamp");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [page, setPage] = useState(1);
+export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props) => {
+  const persisted = (() => {
+    try { return JSON.parse(localStorage.getItem(FILTERS_KEY) || "{}"); } catch { return {}; }
+  })();
+  const [range, setRange] = useState<RangeKey>(
+    ["7", "30", "90", "all"].includes(persisted.range) ? persisted.range : "7"
+  );
+  const [wordFilter, setWordFilter] = useState<string | null>(
+    typeof persisted.wordFilter === "string" ? persisted.wordFilter : null
+  );
+  const [sortKey, setSortKey] = useState<SortKey>(
+    ["timestamp", "query", "duration"].includes(persisted.sortKey) ? persisted.sortKey : "timestamp"
+  );
+  const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir === "asc" ? "asc" : "desc");
+  const [page, setPage] = useState<number>(typeof persisted.page === "number" && persisted.page > 0 ? persisted.page : 1);
   const pageSize = 10;
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter }));
-  }, [range, wordFilter]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page }));
+  }, [range, wordFilter, sortKey, sortDir, page]);
 
-  // Reset page when filters change
+  // Reset page when filters/sort change (but not on direct page set)
   useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
+
 
   const stats = useMemo(() => {
     const all = [
