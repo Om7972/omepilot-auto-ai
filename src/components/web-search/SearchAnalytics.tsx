@@ -309,8 +309,26 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
           ))}
         </ToggleGroup>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5" /> Export CSV
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 min-w-[130px]"
+            onClick={() => runExport("page")}
+            disabled={isExporting || sortedRows.length === 0}
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {isExporting ? `${exportProgress}%` : "Export page"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => runExport("all")}
+            disabled={isExporting || sortedRows.length === 0}
+            title="Export all filtered rows (ignores current page)"
+          >
+            {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+            Export all ({sortedRows.length})
           </Button>
           {onClear && (
             <AlertDialog>
