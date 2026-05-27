@@ -234,7 +234,7 @@ export const WebSearch = () => {
       {showCompare && !isSearching && saved.length >= 2 && <CompareSearches saved={saved} onClose={() => setShowCompare(false)} />}
 
       {/* Analytics */}
-      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} onClear={() => { clearAll(); toast.success("Analytics reset"); }} />}
+      {showAnalytics && !isSearching && <SearchAnalytics history={history} saved={saved} onClear={() => { clearAll(); toast.success("Analytics reset"); }} onOpenSaved={(item) => { handleLoadSaved(item); setShowAnalytics(false); }} />}
       {/* Search History */}
       {!result && !isSearching && !showSaved && history.length > 0 && (
         <Card className="bg-card border-border shadow-sm">
