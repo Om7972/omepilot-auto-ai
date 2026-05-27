@@ -63,14 +63,22 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
   );
   const [sortDir, setSortDir] = useState<SortDir>(persisted.sortDir === "asc" ? "asc" : "desc");
   const [page, setPage] = useState<number>(typeof persisted.page === "number" && persisted.page > 0 ? persisted.page : 1);
-  const pageSize = 10;
+  const PAGE_SIZE_OPTIONS = [10, 25, 50, 100] as const;
+  const [pageSize, setPageSize] = useState<number>(
+    PAGE_SIZE_OPTIONS.includes(persisted.pageSize) ? persisted.pageSize : 10
+  );
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportLabel, setExportLabel] = useState("");
+  const [missingDetailsRow, setMissingDetailsRow] = useState<{ query: string; timestamp: number } | null>(null);
+  const rowRefs = useRef<Record<string, HTMLTableRowElement | null>>({});
 
   useEffect(() => {
-    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page }));
-  }, [range, wordFilter, sortKey, sortDir, page]);
+    localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page, pageSize }));
+  }, [range, wordFilter, sortKey, sortDir, page, pageSize]);
 
-  // Reset page when filters/sort change (but not on direct page set)
-  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir]);
+  // Reset page when filters/sort/pageSize change (but not on direct page set)
+  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir, pageSize]);
 
 
   const stats = useMemo(() => {
