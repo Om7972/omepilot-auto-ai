@@ -356,6 +356,19 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
         </div>
       </div>
 
+      {isExporting && (
+        <div className="space-y-1.5" role="status" aria-live="polite">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> {exportLabel || "Exporting…"}
+            </span>
+            <span className="tabular-nums">{exportProgress}%</span>
+          </div>
+          <Progress value={exportProgress} className="h-1.5" />
+        </div>
+      )}
+
+
       {wordFilter && (
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Filtering by term:</span>
