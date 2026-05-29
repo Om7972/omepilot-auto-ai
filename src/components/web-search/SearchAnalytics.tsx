@@ -249,8 +249,8 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
       setExportLabel("Writing file…");
       const stamp = new Date().toISOString().slice(0, 10);
       const filename = scope === "page"
-        ? `search-entries-${stamp}-p${currentPage}.csv`
-        : `search-entries-${stamp}-all.csv`;
+        ? `omepilot-search-entries-${stamp}-p${currentPage}.csv`
+        : `omepilot-search-entries-${stamp}-all.csv`;
       downloadCsv(filename, buildCsvRows(accumulated, scope));
       setExportProgress(100);
       toast.success(scope === "page" ? "Page CSV downloaded" : `Exported ${source.length} rows`);
