@@ -636,7 +636,7 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                 <div className="flex items-center gap-2">
                   <span>Rows per page:</span>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                    <SelectTrigger aria-label="Rows per page" className="h-7 w-[70px] text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
