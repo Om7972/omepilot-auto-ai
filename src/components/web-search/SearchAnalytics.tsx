@@ -213,7 +213,8 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
 
   const buildCsvRows = (rowsSource: typeof pagedRows, scope: "page" | "all") => {
     const rows: (string | number)[][] = [];
-    rows.push(["Search Entries Export"]);
+    rows.push(["Omepilot — Search Analytics Export"]);
+    rows.push(["Product", "Omepilot"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
@@ -226,6 +227,7 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     );
     return rows;
   };
+
 
   const runExport = async (scope: "page" | "all") => {
     if (isExporting) return;
@@ -247,8 +249,8 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
       setExportLabel("Writing file…");
       const stamp = new Date().toISOString().slice(0, 10);
       const filename = scope === "page"
-        ? `search-entries-${stamp}-p${currentPage}.csv`
-        : `search-entries-${stamp}-all.csv`;
+        ? `omepilot-search-entries-${stamp}-p${currentPage}.csv`
+        : `omepilot-search-entries-${stamp}-all.csv`;
       downloadCsv(filename, buildCsvRows(accumulated, scope));
       setExportProgress(100);
       toast.success(scope === "page" ? "Page CSV downloaded" : `Exported ${source.length} rows`);
@@ -634,7 +636,7 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
                 <div className="flex items-center gap-2">
                   <span>Rows per page:</span>
                   <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-                    <SelectTrigger className="h-7 w-[70px] text-xs">
+                    <SelectTrigger aria-label="Rows per page" className="h-7 w-[70px] text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
