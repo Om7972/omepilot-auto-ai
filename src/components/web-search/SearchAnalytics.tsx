@@ -213,7 +213,8 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
 
   const buildCsvRows = (rowsSource: typeof pagedRows, scope: "page" | "all") => {
     const rows: (string | number)[][] = [];
-    rows.push(["Search Entries Export"]);
+    rows.push(["Omepilot — Search Analytics Export"]);
+    rows.push(["Product", "Omepilot"]);
     rows.push(["Generated", new Date().toISOString()]);
     rows.push(["Range", RANGE_LABELS[range]]);
     if (wordFilter) rows.push(["Word filter", wordFilter]);
@@ -226,6 +227,7 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     );
     return rows;
   };
+
 
   const runExport = async (scope: "page" | "all") => {
     if (isExporting) return;
