@@ -77,8 +77,13 @@ export const SearchAnalytics = ({ history, saved, onClear, onOpenSaved }: Props)
     localStorage.setItem(FILTERS_KEY, JSON.stringify({ range, wordFilter, sortKey, sortDir, page, pageSize }));
   }, [range, wordFilter, sortKey, sortDir, page, pageSize]);
 
-  // Reset page when filters/sort/pageSize change (but not on direct page set)
-  useEffect(() => { setPage(1); }, [range, wordFilter, sortKey, sortDir, pageSize]);
+  // Reset page when filters/sort/pageSize change — but skip the first render
+  // so a persisted page value survives refresh and opening in a new tab.
+  const didMountRef = useRef(false);
+  useEffect(() => {
+    if (!didMountRef.current) { didMountRef.current = true; return; }
+    setPage(1);
+  }, [range, wordFilter, sortKey, sortDir, pageSize]);
 
 
   const stats = useMemo(() => {
