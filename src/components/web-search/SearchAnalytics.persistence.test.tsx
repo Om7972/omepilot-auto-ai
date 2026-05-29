@@ -46,7 +46,7 @@ describe("SearchAnalytics persistence", () => {
     expect(pageSizeTrigger()).toHaveTextContent("25");
     expect(screen.getByText(/Page 3 of/i)).toBeInTheDocument();
 
-    const queryHeader = screen.getByRole("button", { name: /Query/i });
+    const queryHeader = screen.getByRole("button", { name: /^Query$/ });
     expect(queryHeader.querySelector("svg.lucide-arrow-up")).toBeTruthy();
 
     const stored = JSON.parse(localStorage.getItem(FILTERS_KEY)!);
@@ -71,7 +71,7 @@ describe("SearchAnalytics persistence", () => {
 
     expect(pageSizeTrigger()).toHaveTextContent("50");
     expect(screen.getByText(/Page 2 of/i)).toBeInTheDocument();
-    const durationHeader = screen.getByRole("button", { name: /Duration/i });
+    const durationHeader = screen.getByRole("button", { name: /^Duration$/ });
     expect(durationHeader.querySelector("svg.lucide-arrow-down")).toBeTruthy();
 
     expect(JSON.parse(localStorage.getItem(FILTERS_KEY)!)).toMatchObject({
@@ -88,7 +88,7 @@ describe("SearchAnalytics persistence", () => {
 
     expect(pageSizeTrigger()).toHaveTextContent("10");
     expect(screen.getByText(/Page 4 of/i)).toBeInTheDocument();
-    const tsHeader = screen.getByRole("button", { name: /Timestamp/i });
+    const tsHeader = screen.getByRole("button", { name: /^Timestamp$/ });
     expect(tsHeader.querySelector("svg.lucide-arrow-up")).toBeTruthy();
   });
 });
