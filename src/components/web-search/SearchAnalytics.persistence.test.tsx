@@ -1,29 +1,35 @@
 /**
  * Verifies the SearchAnalytics table restores sort column, sort direction,
- * current page, and page size after a refresh (re-mount) and when "opened
- * in a new tab" (a fresh component instance reading the same localStorage).
+ * page, and page size after a refresh (unmount + remount) and when "opened
+ * in a new tab" (fresh component instance reading the same localStorage).
  *
- * Strategy: directly assert the persistence contract written to localStorage
- * under the FILTERS_KEY. Re-mounting the component is the same code path
- * used on hard refresh AND on a new tab — both call the initial state
- * factories that read from localStorage. We assert via DOM state (the
- * select trigger and pagination label) which exercises the full
- * useState-from-localStorage flow end-to-end.
+ * Both flows hit the same code path: the component's initial useState
+ * factories read FILTERS_KEY from localStorage. Re-mounting in jsdom
+ * faithfully simulates both scenarios.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { render, screen, cleanup, within } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import { SearchAnalytics } from "./SearchAnalytics";
 import type { SearchHistoryItem, SavedSearch } from "./types";
 
 const FILTERS_KEY = "web-search-analytics-filters";
 
 function makeHistory(n: number): SearchHistoryItem[] {
-  // Spread timestamps over the last few days so the default "7 days" range
-  // includes them.
   return Array.from({ length: n }, (_, i) => ({
     query: `query ${String(i + 1).padStart(3, "0")}`,
     timestamp: Date.now() - i * 60_000,
   }));
+}
+
+function seed(state: Record<string, unknown>) {
+  localStorage.setItem(
+    FILTERS_KEY,
+    JSON.stringify({ range: "7", wordFilter: null, ...state })
+  );
+}
+
+function pageSizeTrigger() {
+  return screen.getByRole("combobox", { name: /Rows per page/i });
 }
 
 describe("SearchAnalytics persistence", () => {
@@ -32,32 +38,17 @@ describe("SearchAnalytics persistence", () => {
     cleanup();
   });
 
-  it("persists sort column, direction, page, and page size to localStorage", () => {
-    // Seed persisted filters as if the user had configured the table
-    localStorage.setItem(
-      FILTERS_KEY,
-      JSON.stringify({
-        range: "7",
-        wordFilter: null,
-        sortKey: "query",
-        sortDir: "asc",
-        page: 3,
-        pageSize: 25,
-      })
-    );
-    const history = makeHistory(120);
+  it("restores sort, direction, page, and page size from localStorage on mount", () => {
+    seed({ sortKey: "query", sortDir: "asc", page: 3, pageSize: 25 });
     const saved: SavedSearch[] = [];
+    render(<SearchAnalytics history={makeHistory(120)} saved={saved} />);
 
-    render(<SearchAnalytics history={history} saved={saved} />);
-
-    // Page size select shows "25"
-    const pageSizeTrigger = screen.getByLabelText("Rows per page", { selector: "button" });
-    expect(pageSizeTrigger).toHaveTextContent("25");
-
-    // Pagination shows "Page 3 of N"
+    expect(pageSizeTrigger()).toHaveTextContent("25");
     expect(screen.getByText(/Page 3 of/i)).toBeInTheDocument();
 
-    // Confirm persistence write-back keeps the same values after mount
+    const queryHeader = screen.getByRole("button", { name: /Query/i });
+    expect(queryHeader.querySelector("svg.lucide-arrow-up")).toBeTruthy();
+
     const stored = JSON.parse(localStorage.getItem(FILTERS_KEY)!);
     expect(stored).toMatchObject({
       sortKey: "query",
@@ -67,33 +58,23 @@ describe("SearchAnalytics persistence", () => {
     });
   });
 
-  it("restores the same view after a refresh (re-mount)", () => {
-    localStorage.setItem(
-      FILTERS_KEY,
-      JSON.stringify({
-        range: "30",
-        wordFilter: null,
-        sortKey: "duration",
-        sortDir: "desc",
-        page: 2,
-        pageSize: 50,
-      })
-    );
+  it("restores the same view after a refresh (unmount + remount)", () => {
+    seed({ sortKey: "duration", sortDir: "desc", page: 2, pageSize: 50 });
     const history = makeHistory(150);
 
     const { unmount } = render(<SearchAnalytics history={history} saved={[]} />);
-    expect(screen.getByLabelText("Rows per page", { selector: "button" })).toHaveTextContent("50");
+    expect(pageSizeTrigger()).toHaveTextContent("50");
     expect(screen.getByText(/Page 2 of/i)).toBeInTheDocument();
 
-    // Simulate refresh: unmount + remount
     unmount();
     render(<SearchAnalytics history={history} saved={[]} />);
 
-    expect(screen.getByLabelText("Rows per page", { selector: "button" })).toHaveTextContent("50");
+    expect(pageSizeTrigger()).toHaveTextContent("50");
     expect(screen.getByText(/Page 2 of/i)).toBeInTheDocument();
+    const durationHeader = screen.getByRole("button", { name: /Duration/i });
+    expect(durationHeader.querySelector("svg.lucide-arrow-down")).toBeTruthy();
 
-    const stored = JSON.parse(localStorage.getItem(FILTERS_KEY)!);
-    expect(stored).toMatchObject({
+    expect(JSON.parse(localStorage.getItem(FILTERS_KEY)!)).toMatchObject({
       sortKey: "duration",
       sortDir: "desc",
       page: 2,
@@ -102,32 +83,12 @@ describe("SearchAnalytics persistence", () => {
   });
 
   it('restores the same view when "opened in a new tab" (fresh instance, same storage)', () => {
-    // Tab 1: user configures the table
-    localStorage.setItem(
-      FILTERS_KEY,
-      JSON.stringify({
-        range: "7",
-        wordFilter: null,
-        sortKey: "timestamp",
-        sortDir: "asc",
-        page: 4,
-        pageSize: 10,
-      })
-    );
-    const history = makeHistory(80);
+    seed({ sortKey: "timestamp", sortDir: "asc", page: 4, pageSize: 10 });
+    render(<SearchAnalytics history={makeHistory(80)} saved={[]} />);
 
-    // Tab 2: a fresh, independent render reading the same localStorage —
-    // exactly what a new browser tab does on first paint.
-    render(<SearchAnalytics history={history} saved={[]} />);
-
-    expect(screen.getByLabelText("Rows per page", { selector: "button" })).toHaveTextContent("10");
+    expect(pageSizeTrigger()).toHaveTextContent("10");
     expect(screen.getByText(/Page 4 of/i)).toBeInTheDocument();
-
-    // Sort indicators: timestamp column should show the ascending arrow.
     const tsHeader = screen.getByRole("button", { name: /Timestamp/i });
-    // The ArrowUp lucide icon has class lucide-arrow-up
-    expect(within(tsHeader).getByText((_, el) =>
-      !!el && el.tagName.toLowerCase() === "svg" && el.classList.contains("lucide-arrow-up")
-    )).toBeTruthy();
+    expect(tsHeader.querySelector("svg.lucide-arrow-up")).toBeTruthy();
   });
 });
