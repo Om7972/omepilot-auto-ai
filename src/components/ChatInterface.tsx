@@ -1093,7 +1093,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message Copilot"
+                placeholder="Message Omepilot"
                 className="border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-0 px-0 text-base placeholder:text-muted-foreground/60"
                 rows={1}
               />
