@@ -908,14 +908,14 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-8" ref={scrollRef}>
         {messages.length === 0 ? (
           <ChatLandingPage 
             userName={userName} 
             onQuickAction={handleQuickAction}
           />
         ) : (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-[850px] mx-auto space-y-6">
             {/* Proactive Suggestions at the top of conversation */}
             {messages.length > 0 && messages.length < 3 && (
               <ProactiveSuggestions 
@@ -1052,9 +1052,9 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       </ScrollArea>
 
       {/* Input */}
-      <div className="border-t border-border p-4 md:p-6">
-        <div className="max-w-4xl mx-auto">
-          <div className="relative bg-card/50 backdrop-blur-sm rounded-2xl border border-border/50 shadow-lg">
+      <div className="border-t border-border px-4 py-4 md:px-8 md:py-6">
+        <div className="max-w-[850px] mx-auto">
+          <div className="relative bg-card/50 backdrop-blur-sm rounded-[28px] border border-border/50 shadow-lg">
             {/* Pending file attachments preview */}
             {pendingFiles.length > 0 && (
               <div className="flex flex-wrap gap-2 px-4 pt-3">
@@ -1093,7 +1093,7 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Message Copilot"
+                placeholder="Message Omepilot"
                 className="border-0 bg-transparent resize-none focus-visible:ring-0 focus-visible:ring-offset-0 min-h-[24px] max-h-32 py-0 px-0 text-base placeholder:text-muted-foreground/60"
                 rows={1}
               />
