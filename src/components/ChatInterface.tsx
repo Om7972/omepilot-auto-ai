@@ -908,14 +908,14 @@ export const ChatInterface = ({ onToggleSidebar, isSidebarCollapsed = false }: C
       )}
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-6" ref={scrollRef}>
+      <ScrollArea className="flex-1 p-8" ref={scrollRef}>
         {messages.length === 0 ? (
           <ChatLandingPage 
             userName={userName} 
             onQuickAction={handleQuickAction}
           />
         ) : (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-[850px] mx-auto space-y-6">
             {/* Proactive Suggestions at the top of conversation */}
             {messages.length > 0 && messages.length < 3 && (
               <ProactiveSuggestions 
