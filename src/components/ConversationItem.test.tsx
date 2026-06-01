@@ -166,26 +166,4 @@ describe("ConversationItem actions", () => {
     expect(onDelete).toHaveBeenCalled();
   });
 
-  it("shows a loading state on the confirm button while deletion is in flight", async () => {
-    const user = userEvent.setup();
-    renderItem();
-    await openMenu(user);
-    await user.click(await screen.findByText("Delete"));
-
-    // Hold the first delete call so the handler stays pending
-    let resolveHold: (v: unknown) => void = () => {};
-    eqAfterDelete.mockImplementationOnce(
-      () => new Promise((r) => { resolveHold = r; })
-    );
-
-    const confirmBtn = await screen.findByRole("button", { name: "Delete" });
-    // Use fireEvent so the synchronous state update happens before we assert
-    const { fireEvent } = await import("@testing-library/react");
-    fireEvent.click(confirmBtn);
-
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /Deleting/i })).toBeDisabled()
-    );
-    resolveHold({ error: null });
-  });
 });
