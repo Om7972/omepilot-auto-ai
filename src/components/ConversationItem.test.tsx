@@ -167,9 +167,8 @@ describe("ConversationItem actions", () => {
     const confirmBtn = await screen.findByRole("button", { name: "Delete" });
     await user.click(confirmBtn);
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Deleting..." })).toBeDisabled()
-    );
+    const deletingBtn = await screen.findByRole("button", { name: "Deleting..." });
+    expect(deletingBtn).toBeDisabled();
 
     resolveDelete({ error: null });
 
