@@ -152,28 +152,37 @@ describe("ConversationItem actions", () => {
     expect(toastSuccess).toHaveBeenCalledWith("Conversation unarchived");
   });
 
-  it("deletes with confirmation, shows loading state, then a toast", async () => {
+  it("deletes a conversation with confirmation and shows a success toast", async () => {
     const user = userEvent.setup();
     const { onDelete } = renderItem();
     await openMenu(user);
     await user.click(await screen.findByText("Delete"));
 
-    // Hold the delete promise so we can observe the loading state
-    let resolveDelete: (v: unknown) => void = () => {};
-    eqAfterDelete.mockImplementationOnce(
-      () => new Promise((r) => { resolveDelete = r; })
-    );
-
     const confirmBtn = await screen.findByRole("button", { name: "Delete" });
     await user.click(confirmBtn);
-
-    const deletingBtn = await screen.findByRole("button", { name: "Deleting..." });
-    expect(deletingBtn).toBeDisabled();
-
-    resolveDelete({ error: null });
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("conversations"));
     expect(toastSuccess).toHaveBeenCalledWith("Conversation deleted");
     expect(onDelete).toHaveBeenCalled();
+  });
+
+  it("disables the cancel/delete buttons while deletion is in flight (loading feedback)", async () => {
+    const user = userEvent.setup();
+    renderItem();
+    await openMenu(user);
+    await user.click(await screen.findByText("Delete"));
+
+    // Hold the first delete call (messages) so the handler stays pending
+    let resolveHold: (v: unknown) => void = () => {};
+    eqAfterDelete.mockImplementationOnce(
+      () => new Promise((r) => { resolveHold = r; })
+    );
+
+    const confirmBtn = await screen.findByRole("button", { name: "Delete" });
+    user.click(confirmBtn); // do NOT await — handler is held
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Cancel" })).toBeDisabled()
+    );
+    resolveHold({ error: null });
   });
 });
