@@ -1,12 +1,10 @@
 /**
  * Tests for ConversationItem: Rename, Pin, Archive, Delete update the UI,
- * persist via Supabase, and surface toast feedback. Persistence after refresh
- * is covered by ensuring each action issues the correct .update()/.delete()
- * payload against the conversations table — the realtime hook then refreshes
- * the list on next mount, which is the production refresh flow for Omepilot.
+ * persist via Supabase, and surface toast feedback for Omepilot.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { render, screen, waitFor, cleanup } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ConversationItem } from "./ConversationItem";
 
@@ -17,13 +15,13 @@ const eqAfterDelete = vi.fn().mockResolvedValue({ error: null });
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
-    from: (_table: string) => ({
+    from: (table: string) => ({
       update: (payload: unknown) => {
-        updateMock(_table, payload);
+        updateMock(table, payload);
         return { eq: eqAfterUpdate };
       },
       delete: () => {
-        deleteMock(_table);
+        deleteMock(table);
         return { eq: eqAfterDelete };
       },
     }),
@@ -39,9 +37,20 @@ vi.mock("sonner", () => ({
   },
 }));
 
-// Heavy dialogs not needed for these flows
 vi.mock("./ShareDialog", () => ({ ShareDialog: () => null }));
 vi.mock("./ExportChatDialog", () => ({ ExportChatDialog: () => null }));
+
+// Radix dropdown / dialog in jsdom needs these pointer APIs
+beforeEach(() => {
+  if (!(Element.prototype as any).hasPointerCapture) {
+    (Element.prototype as any).hasPointerCapture = () => false;
+    (Element.prototype as any).setPointerCapture = () => {};
+    (Element.prototype as any).releasePointerCapture = () => {};
+  }
+  if (!(Element.prototype as any).scrollIntoView) {
+    (Element.prototype as any).scrollIntoView = () => {};
+  }
+});
 
 function renderItem(overrides: Partial<React.ComponentProps<typeof ConversationItem>> = {}) {
   const onUpdate = vi.fn();
@@ -63,16 +72,9 @@ function renderItem(overrides: Partial<React.ComponentProps<typeof ConversationI
   return { ...utils, onUpdate, onDelete };
 }
 
-async function openMenu() {
-  fireEvent.click(screen.getByRole("button", { name: "" }) ?? screen.getAllByRole("button")[0]);
-  // The trigger has no accessible name; fall back to the MoreHorizontal button
-  // by selecting the last button before the menu opens.
-}
-
-function clickMenuTrigger() {
-  const triggers = screen.getAllByRole("button");
-  // dropdown trigger is the last button in the row
-  fireEvent.click(triggers[triggers.length - 1]);
+async function openMenu(user: ReturnType<typeof userEvent.setup>) {
+  const buttons = screen.getAllByRole("button");
+  await user.click(buttons[buttons.length - 1]);
 }
 
 describe("ConversationItem actions", () => {
@@ -86,43 +88,52 @@ describe("ConversationItem actions", () => {
     cleanup();
   });
 
-  it("renames a conversation, updates UI, and shows a success toast", async () => {
+  it("renames a conversation and shows a success toast", async () => {
+    const user = userEvent.setup();
     const { onUpdate } = renderItem();
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Rename"));
+    await openMenu(user);
+    await user.click(await screen.findByText("Rename"));
 
     const input = screen.getByDisplayValue("My chat") as HTMLInputElement;
-    fireEvent.change(input, { target: { value: "Renamed chat" } });
-    fireEvent.keyDown(input, { key: "Enter" });
+    await user.clear(input);
+    await user.type(input, "Renamed chat{Enter}");
 
-    await waitFor(() => expect(updateMock).toHaveBeenCalledWith("conversations", { title: "Renamed chat" }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith("conversations", { title: "Renamed chat" })
+    );
     expect(toastSuccess).toHaveBeenCalledWith("Title updated");
     expect(onUpdate).toHaveBeenCalled();
   });
 
   it("pins a conversation and confirms with a toast", async () => {
+    const user = userEvent.setup();
     const { onUpdate } = renderItem({ isPinned: false });
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Pin chat"));
+    await openMenu(user);
+    await user.click(await screen.findByText("Pin chat"));
 
-    await waitFor(() => expect(updateMock).toHaveBeenCalledWith("conversations", { is_pinned: true }));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith("conversations", { is_pinned: true })
+    );
     expect(toastSuccess).toHaveBeenCalledWith("Pinned");
     expect(onUpdate).toHaveBeenCalled();
   });
 
   it("unpins when already pinned", async () => {
+    const user = userEvent.setup();
     renderItem({ isPinned: true });
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Pin chat"));
-    await waitFor(() => expect(updateMock).toHaveBeenCalledWith("conversations", { is_pinned: false }));
+    await openMenu(user);
+    await user.click(await screen.findByText("Pin chat"));
+    await waitFor(() =>
+      expect(updateMock).toHaveBeenCalledWith("conversations", { is_pinned: false })
+    );
     expect(toastSuccess).toHaveBeenCalledWith("Unpinned");
   });
 
   it("archives a conversation and confirms with a toast", async () => {
+    const user = userEvent.setup();
     const { onUpdate } = renderItem({ isArchived: false });
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Archive"));
-
+    await openMenu(user);
+    await user.click(await screen.findByText("Archive"));
     await waitFor(() =>
       expect(updateMock).toHaveBeenCalledWith("conversations", { is_archived: true })
     );
@@ -131,22 +142,21 @@ describe("ConversationItem actions", () => {
   });
 
   it("unarchives when already archived", async () => {
+    const user = userEvent.setup();
     renderItem({ isArchived: true });
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Unarchive"));
+    await openMenu(user);
+    await user.click(await screen.findByText("Unarchive"));
     await waitFor(() =>
       expect(updateMock).toHaveBeenCalledWith("conversations", { is_archived: false })
     );
     expect(toastSuccess).toHaveBeenCalledWith("Conversation unarchived");
   });
 
-  it("deletes a conversation with confirmation, shows loading state, then toast", async () => {
+  it("deletes with confirmation, shows loading state, then a toast", async () => {
+    const user = userEvent.setup();
     const { onDelete } = renderItem();
-    clickMenuTrigger();
-    fireEvent.click(await screen.findByText("Delete"));
-
-    // Confirmation dialog appears
-    const confirmBtn = await screen.findByRole("button", { name: "Delete" });
+    await openMenu(user);
+    await user.click(await screen.findByText("Delete"));
 
     // Hold the delete promise so we can observe the loading state
     let resolveDelete: (v: unknown) => void = () => {};
@@ -154,7 +164,8 @@ describe("ConversationItem actions", () => {
       () => new Promise((r) => { resolveDelete = r; })
     );
 
-    fireEvent.click(confirmBtn);
+    const confirmBtn = await screen.findByRole("button", { name: "Delete" });
+    await user.click(confirmBtn);
 
     await waitFor(() =>
       expect(screen.getByRole("button", { name: "Deleting..." })).toBeDisabled()
