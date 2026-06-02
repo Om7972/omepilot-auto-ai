@@ -8,7 +8,9 @@
     "build": "vite build",
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "e2e": "playwright test",
+    "e2e:update-snapshots": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
