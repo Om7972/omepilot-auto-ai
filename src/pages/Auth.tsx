@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { AuthError } from '@supabase/supabase-js';
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, Sparkles, Brain, Zap, MessageSquare } from "lucide-react";
+import { motion } from "framer-motion";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 import { useAuth } from "@/contexts/AuthContext";
 import { isAuthNetworkError, withAuthRecovery } from "@/lib/authRecovery";
@@ -26,7 +27,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/');
+      navigate('/chat');
     }
   }, [authLoading, user, navigate]);
 
@@ -121,7 +122,7 @@ export default function Auth() {
 
       if (data.session) {
         toast.success('Signed in successfully!');
-        navigate('/');
+        navigate('/chat');
       }
     } catch (error: unknown) {
       const authError = error as AuthError;
@@ -269,15 +270,48 @@ export default function Auth() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md bg-card">
-        <CardHeader className="space-y-4 text-center">
-          <div className="flex justify-center">
-            <img src={omepilotLogo} alt="Omepilot" className="w-16 h-16" />
-          </div>
-          <CardTitle className="text-3xl font-bold">Welcome to Omepilot</CardTitle>
-          <CardDescription>Your AI assistant powered by n8n automation</CardDescription>
-        </CardHeader>
+    <div className="relative flex min-h-screen items-center justify-center bg-background p-4 overflow-hidden">
+      {/* Decorative gradient blobs */}
+      <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-primary/20 blur-3xl animate-pulse" />
+      <div className="pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-primary/10 blur-3xl animate-pulse" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 w-full max-w-md"
+      >
+        <Card className="w-full bg-card/80 backdrop-blur border-border/60 shadow-2xl">
+          <CardHeader className="space-y-4 text-center">
+            <div className="flex justify-center">
+              <motion.img
+                src={omepilotLogo}
+                alt="Omepilot"
+                className="w-16 h-16"
+                animate={{ y: [0, -6, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              />
+            </div>
+            <div className="inline-flex items-center justify-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              Your everyday AI copilot
+            </div>
+            <CardTitle className="text-3xl font-bold">Welcome to Omepilot</CardTitle>
+            <CardDescription>Sign in to chat, search, create images and more.</CardDescription>
+
+            <div className="grid grid-cols-3 gap-2 pt-2">
+              {[
+                { icon: Brain, label: "Smart chat" },
+                { icon: Zap, label: "Fast results" },
+                { icon: MessageSquare, label: "Voice & TTS" },
+              ].map((f) => (
+                <div key={f.label} className="flex flex-col items-center gap-1 p-2 rounded-lg bg-muted/40">
+                  <f.icon className="w-4 h-4 text-primary" />
+                  <span className="text-[10px] text-muted-foreground">{f.label}</span>
+                </div>
+              ))}
+            </div>
+          </CardHeader>
         <CardContent>
           <Tabs defaultValue="signin" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -367,7 +401,8 @@ export default function Auth() {
             </TabsContent>
           </Tabs>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
     </div>
   );
 }
