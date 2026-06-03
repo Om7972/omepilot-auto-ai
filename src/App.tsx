@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Component, ReactNode } from "react";
 import Auth from "./pages/Auth";
+import Landing from "./pages/Landing";
 import Chat from "./pages/Chat";
 import Discover from "./pages/Discover";
 import CreatorGalleryPage from "./pages/CreatorGallery";
@@ -101,7 +102,7 @@ const App = () => (
             }}>
               <Routes>
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+                <Route path="/" element={<Landing />} />
                 <Route path="/chat" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
                 <Route path="/discover" element={<ProtectedRoute><Discover /></ProtectedRoute>} />
