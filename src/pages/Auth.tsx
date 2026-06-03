@@ -27,7 +27,7 @@ export default function Auth() {
 
   useEffect(() => {
     if (!authLoading && user) {
-      navigate('/');
+      navigate('/chat');
     }
   }, [authLoading, user, navigate]);
 
