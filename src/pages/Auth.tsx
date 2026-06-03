@@ -401,7 +401,8 @@ export default function Auth() {
             </TabsContent>
           </Tabs>
         </CardContent>
-      </Card>
+        </Card>
+      </motion.div>
     </div>
   );
 }
