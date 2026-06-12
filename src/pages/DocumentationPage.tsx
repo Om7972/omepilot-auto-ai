@@ -1,5 +1,7 @@
-import { Sidebar } from "@/components/Sidebar";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -378,7 +380,7 @@ const sections: DocSection[] = [
 ];
 
 export default function DocumentationPage() {
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const navigate = useNavigate();
   const [activeSection, setActiveSection] = useState("getting-started");
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -395,11 +397,17 @@ export default function DocumentationPage() {
   const activeData = sections.find(s => s.id === activeSection);
 
   return (
-    <div className="flex h-screen w-full overflow-hidden">
-      <Sidebar
-        isCollapsed={isSidebarCollapsed}
-        onToggle={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-      />
+    <div className="flex h-screen w-full overflow-hidden flex-col">
+      <div className="flex items-center h-14 border-b border-border px-4 flex-shrink-0">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-2">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        <h1 className="ml-4 font-semibold flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary" />
+          Documentation
+        </h1>
+      </div>
       <div className="flex-1 overflow-hidden flex">
         {/* Sidebar nav */}
         <div className="w-60 border-r border-border bg-muted/30 hidden md:block flex-shrink-0">
