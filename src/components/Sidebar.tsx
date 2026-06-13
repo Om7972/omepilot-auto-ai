@@ -166,24 +166,24 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     <TooltipProvider delayDuration={0}>
       <div 
         className={`flex h-screen flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 ease-out ${
-          isCollapsed ? 'w-[60px]' : 'w-[260px]'
+          effectiveCollapsed ? 'w-[60px]' : 'w-[260px]'
         }`}
       >
         {/* Logo Header */}
-        <div className={`flex items-center h-14 border-b border-sidebar-border/50 ${isCollapsed ? 'justify-center px-2' : 'px-4'}`}>
-          <div className={`flex items-center gap-2.5 ${isCollapsed ? '' : 'flex-1'}`}>
+        <div className={`flex items-center h-14 border-b border-sidebar-border/50 ${effectiveCollapsed ? 'justify-center px-2' : 'px-4'}`}>
+          <div className={`flex items-center gap-2.5 ${effectiveCollapsed ? '' : 'flex-1'}`}>
             <div className="relative">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-primary/10 rounded-lg blur-sm" />
               <img src={omepilotLogo} alt="Omepilot" className="relative w-8 h-8 rounded-lg shadow-lg" />
             </div>
-            {!isCollapsed && (
+            {!effectiveCollapsed && (
               <div className="flex flex-col">
                 <span className="text-base font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">Omepilot</span>
                 <span className="text-[10px] text-muted-foreground -mt-0.5">AI Assistant</span>
               </div>
             )}
           </div>
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <div className="flex items-center gap-1">
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -230,7 +230,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         </div>
 
         {/* Collapsed Toggle */}
-        {isCollapsed && (
+        {effectiveCollapsed && (
           <div className="flex flex-col items-center gap-2 py-3 border-b border-sidebar-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -262,7 +262,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         )}
 
         {/* Search */}
-        {!isCollapsed && (
+        {!effectiveCollapsed && (
           <div className="px-3 py-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
@@ -278,10 +278,10 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         )}
 
         {/* Navigation */}
-        <div className={`flex flex-col gap-0.5 py-2 ${isCollapsed ? 'items-center px-2' : 'px-2'}`}>
+        <div className={`flex flex-col gap-0.5 py-2 ${effectiveCollapsed ? 'items-center px-2' : 'px-2'}`}>
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
-            return isCollapsed ? (
+            return effectiveCollapsed ? (
               <Tooltip key={item.path}>
                 <TooltipTrigger asChild>
                   <Button
@@ -318,7 +318,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         </div>
 
         {/* Conversations - takes remaining space */}
-        {!isCollapsed && (
+        {!effectiveCollapsed && (
           <div className="flex-1 flex flex-col min-h-0 border-t border-sidebar-border/50">
             <div className="flex items-center justify-between px-3 py-2">
               <p className="text-xs font-medium text-muted-foreground">Conversations</p>
@@ -367,7 +367,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         )}
 
         {/* Collapsed conversations */}
-        {isCollapsed && (
+        {effectiveCollapsed && (
           <div className="flex-1 flex flex-col items-center py-2 border-t border-sidebar-border/50">
             <Tooltip>
               <TooltipTrigger asChild>
@@ -386,10 +386,10 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
         )}
 
         {/* User Profile */}
-        <div className={`border-t border-sidebar-border/50 ${isCollapsed ? 'p-2 flex justify-center' : 'p-2'}`}>
+        <div className={`border-t border-sidebar-border/50 ${effectiveCollapsed ? 'p-2 flex justify-center' : 'p-2'}`}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              {isCollapsed ? (
+              {effectiveCollapsed ? (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -425,8 +425,8 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
               )}
             </DropdownMenuTrigger>
             <DropdownMenuContent 
-              align={isCollapsed ? "center" : "end"} 
-              side={isCollapsed ? "right" : "top"}
+              align={effectiveCollapsed ? "center" : "end"} 
+              side={effectiveCollapsed ? "right" : "top"}
               className="w-56"
             >
               <DropdownMenuLabel className="font-normal">
