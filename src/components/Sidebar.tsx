@@ -164,9 +164,31 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div 
-        className={`flex h-screen flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-all duration-300 ease-out ${
-          effectiveCollapsed ? 'w-[60px]' : 'w-[260px]'
+      {/* Mobile hamburger trigger */}
+      {isMobile && isCollapsed && (
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={onToggle}
+          className="fixed top-3 left-3 z-40 h-9 w-9 rounded-lg bg-background/90 backdrop-blur border border-border shadow-sm md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      )}
+      {/* Mobile backdrop */}
+      {isMobileOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm md:hidden"
+          onClick={onToggle}
+          aria-hidden="true"
+        />
+      )}
+      <div
+        className={`flex h-screen flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border/50 transition-transform duration-300 ease-out ${
+          isMobile
+            ? `fixed inset-y-0 left-0 z-50 w-[80vw] max-w-[300px] ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}`
+            : effectiveCollapsed ? 'w-[60px]' : 'w-[260px]'
         }`}
       >
         {/* Logo Header */}
