@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Compass, Palette, Plus, LogOut, ChevronDown, ChevronRight, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard, Archive } from "lucide-react";
+import { Compass, Palette, Plus, LogOut, ChevronDown, ChevronRight, Globe, Moon, Sun, Info, MessageCircle, Search, BookOpen, Brain, FileText, PanelLeftOpen, PanelLeftClose, HelpCircle, CreditCard, Pin, LayoutDashboard, Settings, Trophy, User, Keyboard, Archive, Shield } from "lucide-react";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel } from "@/components/ui/dropdown-menu";
 import omepilotLogo from "@/assets/omepilot-logo.png";
 import { ConversationItem } from "./ConversationItem";
@@ -98,6 +99,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
 
   const groupedConversations = groupConversationsByDate();
 
+  const { isAdmin } = useIsAdmin();
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/profile', icon: User, label: 'Profile' },
@@ -109,6 +111,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
     { path: '/memory', icon: Brain, label: 'Memory' },
     { path: '/create-page', icon: FileText, label: 'Create' },
     { path: '/settings', icon: Settings, label: 'Settings' },
+    ...(isAdmin ? [{ path: '/admin', icon: Shield, label: 'Admin' }] : []),
   ];
 
   interface ConversationDisplay {
