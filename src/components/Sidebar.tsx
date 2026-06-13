@@ -165,7 +165,7 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   return (
     <TooltipProvider delayDuration={0}>
       {/* Mobile hamburger trigger */}
-      {isMobile && isCollapsed && (
+      {isMobile && isCollapsed && !(location.pathname === '/' || location.pathname.startsWith('/chat')) && (
         <Button
           size="icon"
           variant="ghost"
