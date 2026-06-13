@@ -18,6 +18,7 @@ import SettingsPage from "./pages/SettingsPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import ProfilePage from "./pages/ProfilePage";
 import DocumentationPage from "./pages/DocumentationPage";
+import AdminDashboard from "./pages/AdminDashboard";
 import ContactSupportPage from "./pages/ContactSupportPage";
 import SharedConversation from "./pages/SharedConversation";
 import PricingPage from "./pages/PricingPage";
@@ -117,6 +118,7 @@ const App = () => (
                 <Route path="/leaderboard" element={<ProtectedRoute><LeaderboardPage /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="/documentation" element={<ProtectedRoute><DocumentationPage /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 <Route path="/contact-support" element={<ProtectedRoute><ContactSupportPage /></ProtectedRoute>} />
                 <Route path="/shared/:conversationId" element={<SharedConversation />} />
                 <Route path="/pricing" element={<PricingPage />} />
