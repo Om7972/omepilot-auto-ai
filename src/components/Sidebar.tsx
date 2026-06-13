@@ -32,6 +32,7 @@ interface SidebarProps {
 export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const isMobile = useIsMobile();
   const { user, profile, signOut } = useAuth();
   const { conversations, refresh: refreshConversations } = useConversations();
   const { currentTier, subscribed, loading: subLoading } = useSubscription();
@@ -39,6 +40,18 @@ export const Sidebar = ({ isCollapsed, onToggle }: SidebarProps) => {
   const { theme, setTheme } = useTheme();
   const [showAboutDialog, setShowAboutDialog] = useState(false);
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+
+  // Auto-collapse on mobile by default
+  useEffect(() => {
+    if (isMobile && !isCollapsed) {
+      onToggle();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile]);
+
+  // On mobile, treat the sidebar as a drawer overlay; force expanded layout when open
+  const effectiveCollapsed = isMobile ? false : isCollapsed;
+  const isMobileOpen = isMobile && !isCollapsed;
   const [showHelpDialog, setShowHelpDialog] = useState(false);
   const [showSubscriptionDialog, setShowSubscriptionDialog] = useState(false);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
