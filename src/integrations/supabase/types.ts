@@ -668,6 +668,7 @@ export type Database = {
         Returns: Json
       }
       generate_share_token: { Args: never; Returns: string }
+      get_admin_stats: { Args: never; Returns: Json }
       get_leaderboard: {
         Args: { limit_count?: number }
         Returns: {
